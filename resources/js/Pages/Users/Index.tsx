@@ -165,7 +165,7 @@ export default function Index({ users }: Props) {
 
                     {/* KIRI: FORM TAMBAH / EDIT USER */}
                     <div className={`lg:col-span-5 rounded-xl p-6 shadow-sm border transition-colors relative overflow-hidden ${editingId ? 'bg-orange-50 dark:bg-[#2F2113] border-orange-200 dark:border-orange-900/30' : 'bg-white dark:bg-[#232019] border-gray-100 dark:border-zinc-800'}`}>
-                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#f5b800] via-yellow-200 to-gray-200"></div>
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-[#f5b800] via-yellow-200 to-gray-200"></div>
 
                         <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-100 dark:border-zinc-800">
                             <div>
@@ -298,7 +298,7 @@ export default function Index({ users }: Props) {
                         {/* Tabel User */}
                         <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden">
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse min-w-[700px]">
+                                <table className="w-full text-left border-collapse min-w-175">
                                     <thead>
                                         <tr className="bg-gray-50 dark:bg-[#1C1A14] text-[10px] uppercase tracking-wider text-gray-500">
                                             <th className="py-3 px-4 font-semibold">Pengguna</th>

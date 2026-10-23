@@ -134,7 +134,7 @@ export default function Index({ stockOuts, stats }: Props) {
                     </div>
 
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse min-w-[1000px]">
+                        <table className="w-full text-left border-collapse min-w-250">
                             <thead>
                                 <tr className="bg-gray-50 dark:bg-[#1C1A14] text-[10px] uppercase tracking-wider text-gray-500">
                                     <th className="py-3 px-4 font-semibold">Waktu Pencatatan</th>

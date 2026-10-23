@@ -162,7 +162,7 @@ export default function Index({ from, to, salesSummary, chartData, lowStockProdu
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Rincian Penjualan Harian</h3>
                             </div>
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse min-w-[800px]">
+                                <table className="w-full text-left border-collapse min-w-200">
                                     <thead>
                                         <tr className="bg-gray-50 dark:bg-[#1C1A14] text-[10px] uppercase tracking-wider text-gray-500">
                                             <th className="py-3 px-4 font-semibold">Tanggal</th>
@@ -212,7 +212,7 @@ export default function Index({ from, to, salesSummary, chartData, lowStockProdu
 
                         <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden">
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse min-w-[700px]">
+                                <table className="w-full text-left border-collapse min-w-175">
                                     <thead>
                                         <tr className="bg-gray-50 dark:bg-[#1C1A14] text-[10px] uppercase tracking-wider text-gray-500">
                                             <th className="py-3 px-4 font-semibold">Produk & SKU</th>

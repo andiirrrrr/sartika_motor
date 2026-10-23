@@ -66,7 +66,7 @@ export default function ForgotPassword() {
                     <div className="w-full max-w-xl bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-8 sm:p-10 relative overflow-hidden transition-all duration-300">
 
                         {/* Garis Aksen Atas */}
-                        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-yellow-300 via-[#f5b800] to-yellow-500"></div>
+                        <div className="absolute top-0 left-0 right-0 h-1.5 bg-linear-to-r from-yellow-300 via-[#f5b800] to-yellow-500"></div>
 
                         {/* ================= STATE 1: FORM INPUT ================= */}
                         {!isSent && (

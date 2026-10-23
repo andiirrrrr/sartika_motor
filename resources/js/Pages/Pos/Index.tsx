@@ -416,7 +416,7 @@ export default function Index({ categories }: Props) {
                                     <div
                                         key={p.id}
                                         onClick={() => handleTambahKeKeranjang(p)}
-                                        className="group relative bg-white dark:bg-[#232019] rounded-2xl p-3 flex flex-col justify-between shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer min-h-[180px] border border-gray-100 dark:border-zinc-800"
+                                        className="group relative bg-white dark:bg-[#232019] rounded-2xl p-3 flex flex-col justify-between shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer min-h-45 border border-gray-100 dark:border-zinc-800"
                                     >
                                         <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-zinc-800 mb-2 flex items-center justify-center">
                                             <PackageOpen className="size-10 text-gray-300 dark:text-zinc-600" />
@@ -558,7 +558,7 @@ export default function Index({ categories }: Props) {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 backdrop-blur-md p-4 animate-in fade-in">
                     <div className="w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                         {/* Header */}
-                        <div className="h-1.5 w-full bg-gradient-to-r from-[#f5b800] via-yellow-300 to-[#f5b800]"></div>
+                        <div className="h-1.5 w-full bg-linear-to-r from-[#f5b800] via-yellow-300 to-[#f5b800]"></div>
                         <div className="px-6 pt-5 pb-3 flex items-start justify-between bg-white dark:bg-zinc-900">
                             <div>
                                 <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -578,7 +578,7 @@ export default function Index({ categories }: Props) {
                         {/* Body */}
                         <div className="px-6 pb-6 overflow-y-auto space-y-5">
                             {/* Total Banner */}
-                            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#f5b800] to-yellow-400 p-5 text-gray-900 shadow-md">
+                            <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-[#f5b800] to-yellow-400 p-5 text-gray-900 shadow-md">
                                 <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-2">
                                     <div>
                                         <span className="text-xs font-bold tracking-widest uppercase opacity-80">TOTAL TAGIHAN</span>
@@ -728,7 +728,7 @@ export default function Index({ categories }: Props) {
             {/* ================= MODAL STRUK (JAGGED EDGE) ================= */}
             {showReceipt && lastSale && (
                 <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-                    <div className="relative w-full max-w-[400px] my-auto flex flex-col items-center animate-in fade-in zoom-in-95">
+                    <div className="relative w-full max-w-100 my-auto flex flex-col items-center animate-in fade-in zoom-in-95">
 
                         {/* Success Header */}
                         <div className="flex flex-col items-center text-center mb-4">
@@ -798,7 +798,7 @@ export default function Index({ categories }: Props) {
                                     <div className="p-1 bg-white border-2 border-gray-200 rounded">
                                         <div className="w-20 h-20 bg-[url('https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=Sample')] bg-cover opacity-50"></div>
                                     </div>
-                                    <p className="text-[10px] text-center text-gray-500 max-w-[200px]">
+                                    <p className="text-[10px] text-center text-gray-500 max-w-50">
                                         {app_settings?.receipt_footer}
                                     </p>
                                 </div>

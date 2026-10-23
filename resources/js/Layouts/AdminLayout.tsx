@@ -201,7 +201,7 @@ export default function AdminLayout({ children }: Props) {
             {/* MODAL KONFIRMASI LOGOUT */}
             {showLogoutModal && (
                 <div
-                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-md animate-in fade-in transition-all"
+                    className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-md animate-in fade-in transition-all"
                     onClick={(e) => {
                         if (e.target === e.currentTarget) setShowLogoutModal(false);
                     }}

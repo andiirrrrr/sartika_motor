@@ -186,7 +186,7 @@ export default function Index({ products, categories, filters, stats }: Props) {
                 {/* Filter Toolbar */}
                 <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl p-4 shadow-sm">
                     <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-                        <div className="relative flex-1 min-w-[280px]">
+                        <div className="relative flex-1 min-w-70">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-5" />
                             <input
                                 type="text"
@@ -223,7 +223,7 @@ export default function Index({ products, categories, filters, stats }: Props) {
                 {/* Table Container */}
                 <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden">
                     <div className="w-full overflow-x-auto">
-                        <table className="w-full text-left border-collapse min-w-[1000px]">
+                        <table className="w-full text-left border-collapse min-w-250">
                             <thead>
                                 <tr className="bg-gray-50 dark:bg-[#1C1A14] text-[10px] uppercase tracking-wider text-gray-500">
                                     <th className="py-3 px-4 font-semibold w-10 text-center">

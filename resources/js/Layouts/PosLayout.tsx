@@ -47,7 +47,7 @@ export default function PosLayout({ children }: Props) {
             {/* Topbar POS */}
             <header className="flex h-12 shrink-0 items-center justify-between border-b bg-white px-4 dark:bg-zinc-950 dark:border-zinc-800">
                 <div className="flex items-center gap-4">
-                    <h1 className="font-bold text-lg text-primary dark:text-primary">POS Sartika Motor</h1>
+                    <h1 className="font-bold text-lg text-primary">POS Sartika Motor</h1>
                     {activeShift && (
                         <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded dark:bg-green-900/30 dark:text-green-400">
                             Shift Aktif (Modal: Rp {formatRupiah(Number(activeShift.modal_awal))})
@@ -93,7 +93,7 @@ export default function PosLayout({ children }: Props) {
             {/* MODAL KONFIRMASI LOGOUT */}
             {showLogoutModal && (
                 <div
-                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-md animate-in fade-in transition-all"
+                    className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-md animate-in fade-in transition-all"
                     onClick={(e) => {
                         if (e.target === e.currentTarget) setShowLogoutModal(false);
                     }}

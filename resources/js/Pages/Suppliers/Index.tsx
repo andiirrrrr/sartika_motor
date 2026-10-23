@@ -286,7 +286,7 @@ export default function Index({ suppliers }: Props) {
 
                             {/* Data Table */}
                             <div className="w-full overflow-x-auto">
-                                <table className="w-full text-left border-collapse min-w-[800px]">
+                                <table className="w-full text-left border-collapse min-w-200">
                                     <thead>
                                         <tr className="bg-gray-50 dark:bg-[#1C1A14] text-[10px] uppercase tracking-wider text-gray-500">
                                             <th className="py-3 px-5 font-semibold w-10">
@@ -338,7 +338,7 @@ export default function Index({ suppliers }: Props) {
                                                             <span className="text-gray-400 text-xs italic">Tidak ada kontak</span>
                                                         )}
                                                     </td>
-                                                    <td className="py-3.5 px-4 text-gray-500 text-xs max-w-[200px] truncate">
+                                                    <td className="py-3.5 px-4 text-gray-500 text-xs max-w-50 truncate">
                                                         {s.alamat || '-'}
                                                     </td>
                                                     <td className="py-3.5 px-4 text-center">

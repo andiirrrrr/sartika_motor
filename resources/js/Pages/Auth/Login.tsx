@@ -163,7 +163,7 @@ export default function Login() {
 
                             {/* KOLOM KANAN: BRANDING SHOWCASE (Hanya tampil di Desktop) */}
                             <div className="hidden lg:col-span-5 lg:flex flex-col">
-                                <div className="w-full h-full min-h-[500px] bg-[#f4f4f1] dark:bg-zinc-900 rounded-3xl p-8 relative overflow-hidden flex flex-col justify-between shadow-sm border border-gray-100 dark:border-zinc-800">
+                                <div className="w-full h-full min-h-125 bg-[#f4f4f1] dark:bg-zinc-900 rounded-3xl p-8 relative overflow-hidden flex flex-col justify-between shadow-sm border border-gray-100 dark:border-zinc-800">
 
                                     {/* Efek Latar Belakang */}
                                     <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-[#f5b800]/20 blur-2xl pointer-events-none"></div>
