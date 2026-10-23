@@ -1,0 +1,24 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('stock_ins', function (Blueprint $table) {
+            // Tambah relasi ke supplier (nullable karena stok awal mungkin tidak ada supplier)
+            $table->foreignId('supplier_id')->nullable()->after('product_id')->constrained('suppliers')->nullOnDelete();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('stock_ins', function (Blueprint $table) {
+            $table->dropForeign(['supplier_id']);
+            $table->dropColumn('supplier_id');
+        });
+    }
+};
