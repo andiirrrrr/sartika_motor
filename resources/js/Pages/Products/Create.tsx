@@ -2,7 +2,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { useRef, useEffect, FormEvent, useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, Save, Calculator, Image as ImageIcon, CheckCircle2, Barcode, Tag, Layers } from 'lucide-react';
+import { ArrowLeft, Save, Calculator, Image as ImageIcon, Barcode, Tag, Layers, X } from 'lucide-react';
 
 interface Props {
     categories: { id: number; nama: string }[];
@@ -10,9 +10,8 @@ interface Props {
 
 export default function Create({ categories }: Props) {
     const kodeRef = useRef<HTMLInputElement>(null);
-
-    // State untuk kalkulator harga
     const [margin, setMargin] = useState<number>(0);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
 
     const { data, setData, post, processing, errors } = useForm({
         kode_barang: '',
@@ -25,14 +24,13 @@ export default function Create({ categories }: Props) {
         min_qty_grosir: '',
         stok_minimum: '0',
         stok_awal: '',
+        gambar: null as File | null,
     });
 
-    // Fokus otomatis
     useEffect(() => {
         kodeRef.current?.focus();
     }, []);
 
-    // Live Calculator Logic
     const handleHargaBeliChange = (val: string) => {
         setData('harga_beli', val);
         const hpp = parseFloat(val) || 0;
@@ -62,10 +60,19 @@ export default function Create({ categories }: Props) {
         }
     };
 
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setData('gambar', file);
+            setImagePreview(URL.createObjectURL(file));
+        }
+    };
+
     const submit = (e: FormEvent) => {
         e.preventDefault();
         post('/products', {
             preserveScroll: true,
+            forceFormData: true, // Wajib untuk upload file
             onSuccess: () => {
                 const prevKategori = data.kategori_id;
                 const prevSatuan = data.satuan;
@@ -82,7 +89,9 @@ export default function Create({ categories }: Props) {
                     min_qty_grosir: '',
                     stok_minimum: prevStokMin,
                     stok_awal: '',
+                    gambar: null,
                 });
+                setImagePreview(null);
                 setMargin(0);
                 kodeRef.current?.focus();
             }
@@ -95,7 +104,6 @@ export default function Create({ categories }: Props) {
         <AdminLayout>
             <Head title="Tambah Produk Baru" />
 
-            {/* Top Header Context */}
             <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <div className="text-xs text-gray-500 mb-1 flex items-center gap-2">
@@ -122,10 +130,7 @@ export default function Create({ categories }: Props) {
             </div>
 
             <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-24">
-
-                {/* LEFT COLUMN (8 Cols) */}
                 <div className="lg:col-span-8 flex flex-col gap-6">
-
                     {/* SEKSI 1: IDENTITAS DASAR */}
                     <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
                         <div className="flex items-center gap-3 border-b border-gray-100 dark:border-zinc-800 pb-4 mb-4">
@@ -243,7 +248,6 @@ export default function Create({ categories }: Props) {
                             </div>
                         </div>
 
-                        {/* Harga Grosir */}
                         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Harga Grosir (Opsional)</label>
@@ -314,20 +318,43 @@ export default function Create({ categories }: Props) {
                     </div>
                 </div>
 
-                {/* RIGHT COLUMN (4 Cols) */}
                 <div className="lg:col-span-4 flex flex-col gap-6">
-
-                    {/* Widget Foto */}
+                    {/* Widget Foto dengan Upload */}
                     <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
                         <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
-                            <ImageIcon className="size-4 text-[#f5b800]" /> Foto Produk
+                            <ImageIcon className="size-4 text-[#f5b800]" /> Foto Produk (WebP)
                         </h3>
-                        <div className="rounded-xl border-2 border-dashed border-gray-300 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/50 p-6 flex flex-col items-center justify-center text-center cursor-not-allowed opacity-70">
-                            <div className="w-12 h-12 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm mb-2">
-                                <ImageIcon className="size-5 text-gray-400" />
-                            </div>
-                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Fitur Upload Segera Hadir</span>
-                            <span className="text-[10px] text-gray-500 mt-1">Membutuhkan setup storage.</span>
+                        <div className="relative rounded-xl border-2 border-dashed border-gray-300 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/50 hover:bg-gray-100 transition-colors flex flex-col items-center justify-center text-center overflow-hidden min-h-[200px]">
+                            <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/jpg"
+                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                                onChange={handleImageChange}
+                            />
+                            {imagePreview ? (
+                                <div className="relative w-full h-48">
+                                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setData('gambar', null);
+                                            setImagePreview(null);
+                                        }}
+                                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full z-20 hover:bg-red-600 transition-colors"
+                                    >
+                                        <X className="size-4" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center p-6">
+                                    <div className="w-12 h-12 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm mb-2">
+                                        <ImageIcon className="size-5 text-gray-400" />
+                                    </div>
+                                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Klik untuk Upload Foto</span>
+                                    <span className="text-[10px] text-gray-500 mt-1">Otomatis dikonversi ke WebP (Maks 2MB)</span>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -341,8 +368,14 @@ export default function Create({ categories }: Props) {
 
                         <div className="rounded-xl border border-gray-200 dark:border-zinc-700 p-3 shadow-sm bg-white dark:bg-zinc-950">
                             <div className="flex gap-3">
-                                <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
-                                    <ImageIcon className="size-6 text-gray-300" />
+                                <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 overflow-hidden">
+                                    {imagePreview ? (
+                                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                    ) : data.nama ? (
+                                        <span className="text-2xl font-bold text-[#f5b800] uppercase">{data.nama.charAt(0)}</span>
+                                    ) : (
+                                        <ImageIcon className="size-6 text-gray-300" />
+                                    )}
                                 </div>
                                 <div className="flex-1 min-w-0 flex flex-col justify-center">
                                     <p className="text-[10px] text-gray-500 uppercase tracking-wider">{categories.find(c => c.id.toString() === data.kategori_id)?.nama || 'Kategori'}</p>
@@ -355,9 +388,6 @@ export default function Create({ categories }: Props) {
                             <div className="mt-3 pt-2 border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between">
                                 <div className="flex flex-col">
                                     <span className="text-sm font-bold text-[#f5b800]">Rp {formatRupiah(parseFloat(data.harga_jual) || 0)}</span>
-                                    {data.harga_grosir && data.min_qty_grosir && (
-                                        <span className="text-[9px] text-green-600 font-medium">Grosir: Rp {formatRupiah(parseFloat(data.harga_grosir) || 0)}</span>
-                                    )}
                                 </div>
                                 <span className="text-xs bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded font-medium">
                                     Stok: {data.stok_awal || 0}
@@ -365,7 +395,6 @@ export default function Create({ categories }: Props) {
                             </div>
                         </div>
                     </div>
-
                 </div>
             </form>
         </AdminLayout>

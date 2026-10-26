@@ -273,9 +273,6 @@ export default function Index({ users }: Props) {
                                     <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama, username, email..." className="w-full h-10 pl-9 pr-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none" />
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <button className="h-10 px-3 rounded-xl bg-gray-50 dark:bg-zinc-800 text-gray-500 hover:bg-gray-100 flex items-center gap-1 text-sm font-medium transition-colors">
-                                        <Download className="size-4" /> Ekspor
-                                    </button>
                                     <button onClick={() => window.location.reload()} className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-zinc-800 text-gray-500 hover:bg-gray-100 flex items-center justify-center transition-colors">
                                         <RefreshCw className="size-4" />
                                     </button>

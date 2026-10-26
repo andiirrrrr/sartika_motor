@@ -58,6 +58,7 @@ class HandleInertiaRequests extends Middleware
                 'store_phone' => \App\Models\Setting::get('store_phone', '0812-3456-7890'),
                 'receipt_footer' => \App\Models\Setting::get('receipt_footer', 'Terima kasih atas kunjungan Anda'),
             ],
+            'low_stock_count' => fn () => \App\Models\Product::stokMenipis()->count(),
         ]);
     }
 }

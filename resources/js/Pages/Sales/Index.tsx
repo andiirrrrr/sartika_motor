@@ -3,10 +3,11 @@ import { useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
 import {
-    Download, Plus, Search, Receipt, TrendingUp,
-    Wallet, ShoppingCart, FileText, Printer, Eye
+    Plus, Search, Receipt, TrendingUp,
+    Wallet, ShoppingCart, FileText, Eye
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface Props {
     sales: {
@@ -30,6 +31,14 @@ interface Props {
 
 const formatRupiah = (n: number) => new Intl.NumberFormat('id-ID').format(n);
 
+// Helper untuk format tanggal ke YYYY-MM-DD berdasarkan waktu lokal (bukan UTC)
+const formatLocalDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 export default function Index({ sales, filters, stats }: Props) {
     const [search, setSearch] = useState(filters.search);
     const [from, setFrom] = useState(filters.from);
@@ -49,7 +58,8 @@ export default function Index({ sales, filters, stats }: Props) {
         applyFilter({ search });
     };
 
-    const setDatePreset = (preset: 'today' | '7days' | 'month') => {
+    // Helper untuk mendapatkan tanggal preset
+    const getPresetDates = (preset: 'today' | '7days' | 'month') => {
         const today = new Date();
         let start = new Date();
 
@@ -59,12 +69,23 @@ export default function Index({ sales, filters, stats }: Props) {
             start = new Date(today.getFullYear(), today.getMonth(), 1);
         }
 
-        const fromStr = start.toISOString().split('T')[0];
-        const toStr = today.toISOString().split('T')[0];
+        return {
+            from: formatLocalDate(start),
+            to: formatLocalDate(today)
+        };
+    };
 
-        setFrom(fromStr);
-        setTo(toStr);
-        router.get('/sales', { from: fromStr, to: toStr, search }, { preserveState: true, replace: true });
+    // Fungsi untuk mengecek apakah tombol preset sedang aktif
+    const isPresetActive = (preset: 'today' | '7days' | 'month') => {
+        const dates = getPresetDates(preset);
+        return from === dates.from && to === dates.to;
+    };
+
+    const setDatePreset = (preset: 'today' | '7days' | 'month') => {
+        const dates = getPresetDates(preset);
+        setFrom(dates.from);
+        setTo(dates.to);
+        router.get('/sales', { from: dates.from, to: dates.to, search }, { preserveState: true, replace: true });
     };
 
     const getMetodeIcon = (metode: string) => {
@@ -102,9 +123,6 @@ export default function Index({ sales, filters, stats }: Props) {
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                        <Button variant="outline" className="h-10 px-4 rounded-xl shadow-sm">
-                            <Download className="size-4 mr-2" /> Ekspor Excel
-                        </Button>
                         <Link href="/pos" className="h-10 px-5 rounded-xl bg-[#f5b800] hover:bg-[#e0a800] text-gray-900 text-sm font-bold shadow-sm flex items-center gap-2 transition-transform active:scale-95">
                             <Plus className="size-5" /> Transaksi Baru
                         </Link>
@@ -169,9 +187,45 @@ export default function Index({ sales, filters, stats }: Props) {
                     <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-gray-100 dark:border-zinc-800 pb-4">
                         <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mr-2">Preset:</span>
-                            <button onClick={() => setDatePreset('today')} className="px-3 py-1.5 rounded-full bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-xs font-semibold shadow-sm transition-colors">Hari Ini</button>
-                            <button onClick={() => setDatePreset('7days')} className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 text-xs font-medium transition-colors">7 Hari Terakhir</button>
-                            <button onClick={() => setDatePreset('month')} className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 text-xs font-medium transition-colors">Bulan Ini</button>
+
+                            {/* Tombol Hari Ini */}
+                            <button
+                                onClick={() => setDatePreset('today')}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-full text-xs transition-colors",
+                                    isPresetActive('today')
+                                        ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900 font-semibold shadow-sm"
+                                        : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 font-medium"
+                                )}
+                            >
+                                Hari Ini
+                            </button>
+
+                            {/* Tombol 7 Hari */}
+                            <button
+                                onClick={() => setDatePreset('7days')}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-full text-xs transition-colors",
+                                    isPresetActive('7days')
+                                        ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900 font-semibold shadow-sm"
+                                        : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 font-medium"
+                                )}
+                            >
+                                7 Hari Terakhir
+                            </button>
+
+                            {/* Tombol Bulan Ini */}
+                            <button
+                                onClick={() => setDatePreset('month')}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-full text-xs transition-colors",
+                                    isPresetActive('month')
+                                        ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900 font-semibold shadow-sm"
+                                        : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 font-medium"
+                                )}
+                            >
+                                Bulan Ini
+                            </button>
                         </div>
 
                         <div className="flex items-center gap-2 flex-wrap">
@@ -304,9 +358,6 @@ export default function Index({ sales, filters, stats }: Props) {
                             <p className="text-xs text-gray-500">Data tersimpan otomatis ke database pusat.</p>
                         </div>
                     </div>
-                    <Button variant="outline" size="sm" className="hidden sm:flex">
-                        <Printer className="size-4 mr-2" /> Tes Cetak Ulang
-                    </Button>
                 </div>
 
             </div>

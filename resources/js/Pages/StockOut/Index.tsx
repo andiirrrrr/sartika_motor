@@ -61,9 +61,6 @@ export default function Index({ stockOuts, stats }: Props) {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <button className="h-10 px-4 rounded-xl bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-medium shadow-sm hover:bg-gray-50 flex items-center gap-2">
-                            <Download className="size-4" /> Unduh BA
-                        </button>
                         <Link href="/stock-out/create" className="h-10 px-5 rounded-xl bg-[#f5b800] hover:bg-[#e0a800] text-gray-900 text-sm font-bold shadow-sm flex items-center gap-2 transition-transform active:scale-95">
                             <Plus className="size-5" /> Input Stok Keluar
                         </Link>

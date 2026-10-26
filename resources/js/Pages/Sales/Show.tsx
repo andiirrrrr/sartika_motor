@@ -87,9 +87,9 @@ export default function Show({ sale, app_settings }: Props) {
                         </div>
 
                         {/* Container Kertas Struk */}
-                        <div className="relative w-full max-w-[420px] transition-transform duration-300">
+                        <div className="relative w-full max-w-[320px] transition-transform duration-300">
                             {/* Efek Gerigi Atas */}
-                            <div className="w-full h-3 overflow-hidden flex items-end">
+                            <div className="w-full h-3 overflow-hidden flex items-end no-print">
                                 <div className="w-full h-2.5 bg-[#FAF9F5] dark:bg-zinc-200 [mask-image:radial-gradient(circle_at_5px_0px,transparent_4px,#FAF9F5_5px)] [mask-size:10px_10px]"></div>
                             </div>
 
@@ -99,7 +99,6 @@ export default function Show({ sale, app_settings }: Props) {
                                 {/* Header Toko */}
                                 <div className="text-center space-y-1 mb-4">
                                     <div className="inline-flex items-center justify-center gap-1.5 mb-1">
-                                        <span className="w-2 h-2 rounded-full bg-[#f5b800]"></span>
                                         <span className="text-xl font-bold tracking-tight uppercase" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
                                             {app_settings?.store_name || 'SARTIKA MOTOR'}
                                         </span>
@@ -207,7 +206,7 @@ export default function Show({ sale, app_settings }: Props) {
                             </div>
 
                             {/* Efek Gerigi Bawah */}
-                            <div className="w-full h-3 overflow-hidden flex items-start">
+                            <div className="w-full h-3 overflow-hidden flex items-start no-print">
                                 <div className="w-full h-2.5 bg-[#FAF9F5] dark:bg-zinc-200 [mask-image:radial-gradient(circle_at_5px_10px,transparent_4px,#FAF9F5_5px)] [mask-size:10px_10px]"></div>
                             </div>
                         </div>

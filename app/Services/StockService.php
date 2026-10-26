@@ -26,24 +26,44 @@ class StockService
             $product = $this->lockProduct((int) $data['product_id']);
 
             $qty = abs((float) $data['qty']);
-            $hargaBeli = isset($data['harga_beli']) ? (int) $data['harga_beli'] : 0;
+            $hargaBeliBaru = isset($data['harga_beli']) ? (int) $data['harga_beli'] : 0;
 
             $stockIn = StockIn::create([
                 'product_id' => $product->id,
-                'supplier_id' => !empty($data['supplier_id']) ? (int) $data['supplier_id'] : null,
+                'supplier_id' => $data['supplier_id'] ?? null,
                 'qty' => $qty,
-                'harga_beli' => $hargaBeli,
+                'harga_beli' => $hargaBeliBaru,
                 'sumber' => $data['sumber'] ?? null,
                 'catatan' => $data['catatan'] ?? null,
                 'tanggal' => $data['tanggal'],
                 'created_by' => $userId,
             ]);
 
+            // --- LOGIKA AVERAGE COST (HPP RATA-RATA) ---
+            if ($hargaBeliBaru > 0) {
+                $stokLama = (float) $product->stok;
+                $hargaRataLama = (float) $product->harga_beli;
+                
+                // Hitung total nilai aset lama dan baru
+                $totalNilaiLama = $stokLama * $hargaRataLama;
+                $totalNilaiBaru = $qty * $hargaBeliBaru;
+                
+                $totalStokBaru = $stokLama + $qty;
+                
+                // Hitung harga rata-rata baru
+                if ($totalStokBaru > 0) {
+                    $hargaRataBaru = ($totalNilaiLama + $totalNilaiBaru) / $totalStokBaru;
+                    $product->harga_beli = (int) round($hargaRataBaru);
+                } else {
+                    $product->harga_beli = $hargaBeliBaru;
+                }
+            }
+
             $this->recordMovement(
                 product: $product,
                 tipe: 'masuk',
                 qty: $qty,
-                hargaBeli: $hargaBeli > 0 ? $hargaBeli : null,
+                hargaBeli: $hargaBeliBaru > 0 ? $hargaBeliBaru : null,
                 alasan: null,
                 catatan: $data['catatan'] ?? null,
                 referensiTipe: 'stock_in',
@@ -52,11 +72,8 @@ class StockService
                 userId: $userId,
             );
 
-            // Update harga beli produk ke harga terakhir (kalau diisi)
-            if ($hargaBeli > 0) {
-                $product->harga_beli = $hargaBeli;
-                $product->save();
-            }
+            // Simpan perubahan harga rata-rata ke database
+            $product->save();
 
             return $stockIn;
         });

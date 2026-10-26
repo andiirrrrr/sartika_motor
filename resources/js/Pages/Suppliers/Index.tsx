@@ -39,7 +39,6 @@ export default function Index({ suppliers }: Props) {
             put(`/suppliers/${editingId}`, {
                 onSuccess: () => {
                     cancelEdit();
-                    toast.success('Supplier berhasil diperbarui');
                 },
                 preserveScroll: true,
             });
@@ -47,7 +46,6 @@ export default function Index({ suppliers }: Props) {
             post('/suppliers', {
                 onSuccess: () => {
                     reset();
-                    toast.success('Supplier baru berhasil ditambahkan');
                 },
                 preserveScroll: true,
             });
@@ -81,11 +79,7 @@ export default function Index({ suppliers }: Props) {
         router.delete(`/suppliers/${deleteModal.id}`, {
             onSuccess: () => {
                 setDeleteModal({ show: false, id: null, nama: '' });
-                toast.success('Supplier berhasil dihapus');
                 if (editingId === deleteModal.id) cancelEdit();
-            },
-            onError: () => {
-                toast.error('Gagal menghapus', { description: 'Supplier ini mungkin sudah digunakan di riwayat stok masuk.' });
             },
             onFinish: () => setIsDeleting(false),
             preserveScroll: true,
@@ -120,11 +114,6 @@ export default function Index({ suppliers }: Props) {
                         <span className="font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-[#f5b800] inline-block"></span> Manajemen Supplier
                         </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button className="flex items-center gap-2 h-9 px-4 rounded-xl bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-medium shadow-sm hover:bg-gray-50 transition-colors">
-                            <Download className="size-4" /> Ekspor CSV
-                        </button>
                     </div>
                 </div>
 

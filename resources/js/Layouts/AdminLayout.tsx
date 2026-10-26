@@ -18,7 +18,7 @@ interface Props {
 export default function AdminLayout({ children }: Props) {
     const { user } = useAuth();
     const { theme, toggleTheme } = useTheme();
-    const { auth } = usePage().props as any;
+    const { auth, low_stock_count } = usePage().props as any;
     const activeShift = auth?.active_shift;
 
     const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -28,7 +28,8 @@ export default function AdminLayout({ children }: Props) {
         return false;
     });
 
-    // State untuk Modal Logout
+    // State Pencarian & Modal Logout
+    const [globalSearch, setGlobalSearch] = useState('');
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -36,6 +37,14 @@ export default function AdminLayout({ children }: Props) {
         const nextState = !isCollapsed;
         setIsCollapsed(nextState);
         localStorage.setItem('sidebar_collapsed', String(nextState));
+    };
+
+    // Fungsi Pencarian (Tekan Enter)
+    const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && globalSearch.trim() !== '') {
+            router.get('/products', { search: globalSearch.trim() });
+            setGlobalSearch(''); // Kosongkan setelah mencari
+        }
     };
 
     const handleLogoutClick = () => {
@@ -78,6 +87,7 @@ export default function AdminLayout({ children }: Props) {
         <div className="flex min-h-screen bg-[#f9f9f6] dark:bg-zinc-950 transition-colors">
             {/* SIDEBAR */}
             <aside className={`fixed left-0 top-0 h-full bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 z-50 flex flex-col shadow-sm transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
+                {/* ... (Kode Sidebar tetap sama seperti milik Anda) ... */}
                 <div className="h-16 px-4 flex items-center justify-between border-b border-gray-100 dark:border-zinc-800">
                     {!isCollapsed && (
                         <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden">
@@ -126,7 +136,6 @@ export default function AdminLayout({ children }: Props) {
                     ))}
                 </nav>
 
-                {/* Shift Indicator */}
                 {!isCollapsed && (
                     <div className="p-4 border-t border-gray-100 dark:border-zinc-800">
                         <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3">
@@ -143,10 +152,8 @@ export default function AdminLayout({ children }: Props) {
 
             {/* MAIN CONTENT AREA */}
             <div className={`flex-1 flex flex-col transition-all duration-300 ${isCollapsed ? 'pl-20' : 'pl-64'}`}>
-
                 {/* HEADER */}
                 <header className="fixed top-0 right-0 h-16 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md z-40 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between px-6 transition-all duration-300" style={{ left: isCollapsed ? '5rem' : '16rem' }}>
-
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                         <Store className="size-4" />
                         <span>Toko Utama</span>
@@ -154,12 +161,16 @@ export default function AdminLayout({ children }: Props) {
                         <span className="font-semibold text-gray-900 dark:text-white">Sartika Motor</span>
                     </div>
 
+                    {/* SEARCH BAR YANG BERFUNGSI */}
                     <div className="flex-1 max-w-md mx-6 hidden md:block">
                         <div className="relative flex items-center">
                             <Search className="absolute left-3 text-gray-400 size-4" />
                             <input
                                 type="text"
-                                placeholder="Cari transaksi, produk, SKU..."
+                                value={globalSearch}
+                                onChange={(e) => setGlobalSearch(e.target.value)}
+                                onKeyDown={handleSearch}
+                                placeholder="Cari produk atau SKU... (Tekan Enter)"
                                 className="w-full h-9 pl-9 pr-4 rounded-xl bg-gray-100 dark:bg-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#f5b800] transition-all text-gray-900 dark:text-white"
                             />
                         </div>
@@ -172,10 +183,21 @@ export default function AdminLayout({ children }: Props) {
                         <button onClick={toggleTheme} className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors">
                             {theme === 'dark' ? <Sun className="size-5" /> : <Moon className="size-5" />}
                         </button>
-                        <button className="relative w-9 h-9 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors">
+
+                        {/* NOTIFIKASI YANG BERFUNGSI */}
+                        <Link
+                            href="/reports"
+                            className="relative w-9 h-9 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                            title="Cek Laporan Stok Menipis"
+                        >
                             <Bell className="size-5" />
-                            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 border-2 border-white dark:border-zinc-900"></span>
-                        </button>
+                            {low_stock_count > 0 && (
+                                <span className="absolute top-2 right-2 flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 border-2 border-white dark:border-zinc-900"></span>
+                                </span>
+                            )}
+                        </Link>
 
                         <div className="flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-zinc-700">
                             <div className="w-8 h-8 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 flex items-center justify-center font-bold text-xs uppercase">
@@ -201,27 +223,20 @@ export default function AdminLayout({ children }: Props) {
             {/* MODAL KONFIRMASI LOGOUT */}
             {showLogoutModal && (
                 <div
-                    className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-md animate-in fade-in transition-all"
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-md animate-in fade-in transition-all"
                     onClick={(e) => {
                         if (e.target === e.currentTarget) setShowLogoutModal(false);
                     }}
                 >
                     <div className="relative w-full max-w-sm bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl p-6 flex flex-col gap-5 animate-in zoom-in-95 duration-200">
-
-                        {/* Top Icon & Close */}
                         <div className="flex items-start justify-between">
                             <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400 shadow-sm">
                                 <LogOut className="size-6" />
                             </div>
-                            <button
-                                onClick={() => setShowLogoutModal(false)}
-                                className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-zinc-900 text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center justify-center transition-colors"
-                            >
+                            <button onClick={() => setShowLogoutModal(false)} className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-zinc-900 text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center justify-center transition-colors">
                                 <X className="size-5" />
                             </button>
                         </div>
-
-                        {/* Title & Desc */}
                         <div className="space-y-2">
                             <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
                                 Akhiri Sesi Login?
@@ -230,30 +245,17 @@ export default function AdminLayout({ children }: Props) {
                                 Apakah Anda yakin ingin keluar dari sistem? Anda harus memasukkan username dan password kembali untuk masuk.
                             </p>
                         </div>
-
-                        {/* Info Box */}
                         <div className="bg-gray-50 dark:bg-zinc-900 rounded-xl p-3 flex items-center gap-3 border border-gray-100 dark:border-zinc-800">
                             <AlertTriangle className="size-5 text-orange-500 shrink-0" />
                             <div className="text-xs text-gray-600 dark:text-gray-400">
                                 Pastikan semua pekerjaan Anda (seperti input produk) sudah tersimpan.
                             </div>
                         </div>
-
-                        {/* Actions */}
                         <div className="flex items-center gap-3 pt-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => setShowLogoutModal(false)}
-                                disabled={isLoggingOut}
-                                className="flex-1 h-11 rounded-xl"
-                            >
+                            <Button variant="outline" onClick={() => setShowLogoutModal(false)} disabled={isLoggingOut} className="flex-1 h-11 rounded-xl">
                                 Batal
                             </Button>
-                            <Button
-                                onClick={executeLogout}
-                                disabled={isLoggingOut}
-                                className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-md active:scale-95 transition-all"
-                            >
+                            <Button onClick={executeLogout} disabled={isLoggingOut} className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-md active:scale-95 transition-all">
                                 {isLoggingOut ? 'Memproses...' : 'Ya, Logout'}
                             </Button>
                         </div>

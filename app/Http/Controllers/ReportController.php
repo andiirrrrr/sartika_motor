@@ -55,6 +55,34 @@ class ReportController extends Controller
             ->orderBy('stok', 'asc')
             ->get(['id', 'kode_barang', 'nama', 'kategori_id', 'stok', 'stok_minimum', 'satuan']);
 
+        // 4. Produk Terlaris (Top 5)
+        $topProducts = DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->select('sale_items.nama_produk', DB::raw('SUM(sale_items.qty) as total_qty'), DB::raw('SUM(sale_items.subtotal) as total_revenue'))
+            ->whereBetween('sales.tanggal', [$from . ' 00:00:00', $to . ' 23:59:59'])
+            ->groupBy('sale_items.nama_produk')
+            ->orderByDesc('total_qty')
+            ->limit(5)
+            ->get();
+
+        // 5. Penjualan per Kategori
+        $categorySales = DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->join('categories', 'products.kategori_id', '=', 'categories.id')
+            ->select('categories.nama', DB::raw('SUM(sale_items.subtotal) as total_revenue'))
+            ->whereBetween('sales.tanggal', [$from . ' 00:00:00', $to . ' 23:59:59'])
+            ->groupBy('categories.nama')
+            ->orderByDesc('total_revenue')
+            ->get();
+
+        // 6. Metode Pembayaran
+        $paymentMethods = DB::table('sales')
+            ->select('metode_bayar', DB::raw('COUNT(*) as total_transaksi'), DB::raw('SUM(total) as total_revenue'))
+            ->whereBetween('tanggal', [$from . ' 00:00:00', $to . ' 23:59:59'])
+            ->groupBy('metode_bayar')
+            ->get();
+
         return Inertia::render('Reports/Index', [
             'from' => $from,
             'to' => $to,
@@ -67,7 +95,10 @@ class ReportController extends Controller
                 'laba' => $totalLabaKotor,
                 'item' => $totalItem,
                 'aov' => $aov,
-            ]
+            ],
+            'topProducts' => $topProducts,
+            'categorySales' => $categorySales,
+            'paymentMethods' => $paymentMethods,
         ]);
     }
 }

@@ -1,9 +1,9 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import { useState, useEffect } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
 import {
-    Plus, Download, Search, Package, TrendingUp,
-    Truck, FileText, CheckCircle2, User
+    Plus, Search, TrendingUp, Truck, FileText, CheckCircle2, Info
 } from 'lucide-react';
 
 interface Props {
@@ -14,11 +14,26 @@ interface Props {
         to: number | null;
         total: number;
     };
+    filters: {
+        search: string;
+    };
 }
 
 const formatRupiah = (n: number) => new Intl.NumberFormat('id-ID').format(n);
 
-export default function Index({ stockIns }: Props) {
+export default function Index({ stockIns, filters }: Props) {
+    const [search, setSearch] = useState(filters.search || '');
+
+    // Debounce Search 300ms
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (search !== filters.search) {
+                router.get('/stock-in', { search }, { preserveState: true, replace: true });
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [search]);
+
     return (
         <AdminLayout>
             <Head title="Riwayat Stok Masuk" />
@@ -45,9 +60,6 @@ export default function Index({ stockIns }: Props) {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <button className="h-10 px-4 rounded-xl bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-medium shadow-sm hover:bg-gray-50 flex items-center gap-2">
-                            <Download className="size-4" /> Ekspor Laporan
-                        </button>
                         <Link href="/stock-in/create" className="h-10 px-5 rounded-xl bg-[#f5b800] hover:bg-[#e0a800] text-gray-900 text-sm font-bold shadow-sm flex items-center gap-2 transition-transform active:scale-95">
                             <Plus className="size-5" /> Input Stok Masuk
                         </Link>
@@ -90,7 +102,13 @@ export default function Index({ stockIns }: Props) {
                     <div className="p-4 border-b border-gray-100 dark:border-zinc-800 flex items-center justify-between">
                         <div className="relative w-full sm:w-80">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-4" />
-                            <input type="text" placeholder="Cari produk atau supplier..." className="w-full h-10 pl-9 pr-3 rounded-xl bg-gray-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none" />
+                            <input
+                                type="text"
+                                placeholder="Cari produk atau supplier..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="w-full h-10 pl-9 pr-3 rounded-xl bg-gray-50 dark:bg-zinc-800 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none"
+                            />
                         </div>
                     </div>
 
@@ -109,7 +127,9 @@ export default function Index({ stockIns }: Props) {
                             <tbody className="divide-y divide-gray-100 dark:divide-zinc-800/50 text-sm">
                                 {stockIns.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="py-12 text-center text-gray-500">Belum ada riwayat stok masuk.</td>
+                                        <td colSpan={6} className="py-12 text-center text-gray-500">
+                                            {filters.search ? 'Tidak ada data yang cocok dengan pencarian.' : 'Belum ada riwayat stok masuk.'}
+                                        </td>
                                     </tr>
                                 ) : (
                                     stockIns.data.map((item) => {
@@ -127,7 +147,19 @@ export default function Index({ stockIns }: Props) {
                                                     <div className="text-xs text-[#f5b800] font-mono">{item.product?.kode_barang}</div>
                                                 </td>
                                                 <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
-                                                    {item.supplier?.nama || '-'}
+                                                    {item.supplier?.nama ? (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Truck className="size-3.5 text-gray-400" />
+                                                            <span className="font-medium text-gray-900 dark:text-white">{item.supplier.nama}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 text-[11px] font-medium border border-gray-200 dark:border-zinc-700"
+                                                            title="Stok awal sistem atau input manual tanpa supplier"
+                                                        >
+                                                            <Info className="size-3" /> Tanpa Supplier
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="py-3 px-4 text-right">
                                                     <span className="font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">

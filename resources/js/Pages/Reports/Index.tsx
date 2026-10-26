@@ -2,18 +2,60 @@ import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import {
-    TrendingUp, Receipt, Wallet, AlertTriangle,
-    Download, Printer, Filter, ArrowRight, Activity,
-    BarChart3, Clock, Package
+    TrendingUp, Wallet, AlertTriangle,
+    Download, BarChart3, Package, QrCode, CreditCard
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
+
+interface SalesSummary {
+    date: string;
+    total_transaksi: number;
+    total_item: string;
+    total_omzet: number;
+    total_laba: number;
+}
+
+interface ChartData {
+    date: string;
+    total_omzet: number;
+}
+
+interface LowStockProduct {
+    id: number;
+    nama: string;
+    kode_barang: string;
+    stok: string;
+    stok_minimum: string;
+    satuan: string;
+    kategori?: { nama: string } | null;
+}
+
+interface TopProduct {
+    nama_produk: string;
+    total_qty: string;
+    total_revenue: number;
+}
+
+interface CategorySale {
+    nama: string;
+    total_revenue: number;
+}
+
+interface PaymentMethod {
+    metode_bayar: string;
+    total_transaksi: number;
+    total_revenue: number;
+}
 
 interface Props {
     from: string;
     to: string;
-    salesSummary: any[];
-    chartData: any[];
-    lowStockProducts: any[];
+    salesSummary: SalesSummary[];
+    chartData: ChartData[];
+    lowStockProducts: LowStockProduct[];
+    topProducts: TopProduct[];
+    categorySales: CategorySale[];
+    paymentMethods: PaymentMethod[];
     stats: {
         omzet: number;
         transaksi: number;
@@ -25,7 +67,10 @@ interface Props {
 
 const formatRupiah = (n: number) => new Intl.NumberFormat('id-ID').format(n);
 
-export default function Index({ from, to, salesSummary, chartData, lowStockProducts, stats }: Props) {
+export default function Index({
+    from, to, salesSummary, chartData, lowStockProducts,
+    topProducts, categorySales, paymentMethods, stats
+}: Props) {
     const [activeTab, setActiveTab] = useState<'sales' | 'stock'>('sales');
     const [startDate, setStartDate] = useState(from);
     const [endDate, setEndDate] = useState(to);
@@ -153,6 +198,81 @@ export default function Index({ from, to, salesSummary, chartData, lowStockProdu
                                         );
                                     })
                                 )}
+                            </div>
+                        </div>
+
+                        {/* GRID ANALYTICS BAWAH GRAFIK */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                            {/* 1. Produk Terlaris */}
+                            <div className="rounded-2xl bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 shadow-sm p-5">
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                                    <TrendingUp className="size-5 text-green-500" /> Produk Terlaris
+                                </h3>
+                                <div className="space-y-4">
+                                    {topProducts.map((p, i) => (
+                                        <div key={i} className="flex items-center gap-3">
+                                            <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold text-gray-500">
+                                                {i + 1}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{p.nama_produk}</p>
+                                                <p className="text-xs text-gray-500">{parseFloat(p.total_qty)} Terjual</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm font-bold text-[#f5b800]">Rp {formatRupiah(p.total_revenue)}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 2. Penjualan per Kategori */}
+                            <div className="rounded-2xl bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 shadow-sm p-5">
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                                    <Package className="size-5 text-blue-500" /> Pendapatan per Kategori
+                                </h3>
+                                <div className="space-y-4">
+                                    {categorySales.map((c, i) => (
+                                        <div key={i}>
+                                            <div className="flex justify-between text-sm mb-1">
+                                                <span className="font-medium text-gray-700 dark:text-gray-300">{c.nama}</span>
+                                                <span className="font-bold text-gray-900 dark:text-white">Rp {formatRupiah(c.total_revenue)}</span>
+                                            </div>
+                                            <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5">
+                                                <div
+                                                    className="bg-blue-500 h-1.5 rounded-full"
+                                                    style={{ width: `${(c.total_revenue / Math.max(...categorySales.map(x => x.total_revenue))) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 3. Metode Pembayaran */}
+                            <div className="rounded-2xl bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 shadow-sm p-5">
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                                    <Wallet className="size-5 text-purple-500" /> Metode Pembayaran
+                                </h3>
+                                <div className="space-y-3">
+                                    {paymentMethods.map((m, i) => (
+                                        <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-zinc-800/50">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-900 flex items-center justify-center shadow-sm">
+                                                    {m.metode_bayar === 'tunai' ? <Wallet className="size-4 text-green-500" /> :
+                                                        m.metode_bayar === 'qris' ? <QrCode className="size-4 text-blue-500" /> :
+                                                            <CreditCard className="size-4 text-purple-500" />}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900 dark:text-white capitalize">{m.metode_bayar}</p>
+                                                    <p className="text-[10px] text-gray-500">{m.total_transaksi} Transaksi</p>
+                                                </div>
+                                            </div>
+                                            <p className="text-sm font-semibold text-gray-900 dark:text-white">Rp {formatRupiah(m.total_revenue)}</p>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 

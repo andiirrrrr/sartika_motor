@@ -32,6 +32,7 @@ class ProductController extends Controller
                 'id' => $p->id,
                 'kode_barang' => $p->kode_barang,
                 'nama' => $p->nama,
+                'gambar' => $p->gambar,
                 'kategori' => $p->kategori?->nama,
                 'satuan' => $p->satuan,
                 'harga_beli' => $p->harga_beli,
@@ -84,12 +85,18 @@ class ProductController extends Controller
             'min_qty_grosir' => 'nullable|numeric|min:0.01',
             'stok_minimum' => 'required|numeric|min:0',
             'stok_awal' => 'nullable|numeric|min:0',
+            'gambar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated, $request) {
+            $gambarPath = null;
+            if ($request->hasFile('gambar')) {
+                $gambarPath = $this->uploadAndConvertToWebp($request->file('gambar'));
+            }
             $product = Product::create([
                 'kode_barang' => $validated['kode_barang'],
                 'nama' => $validated['nama'],
+                'gambar' => $gambarPath,
                 'kategori_id' => $validated['kategori_id'] ?: null,
                 'satuan' => $validated['satuan'],
                 'harga_beli' => (int) $validated['harga_beli'],
@@ -120,7 +127,7 @@ class ProductController extends Controller
     {
         return Inertia::render('Products/Edit', [
             'product' => $product->only(
-                'id', 'kode_barang', 'nama', 'kategori_id', 'satuan', 
+                'id', 'kode_barang', 'nama', 'gambar', 'kategori_id', 'satuan', 
                 'harga_beli', 'harga_jual', 'harga_grosir', 'min_qty_grosir', 
                 'stok_minimum', 'aktif'
             ),
@@ -140,8 +147,17 @@ class ProductController extends Controller
             'harga_grosir' => 'nullable|numeric|min:0',
             'min_qty_grosir' => 'nullable|numeric|min:0.01',
             'stok_minimum' => 'required|numeric|min:0',
+            'gambar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'aktif' => 'boolean',
         ]);
+
+        if ($request->hasFile('gambar')) {
+            // Hapus gambar lama jika ada
+            if ($product->gambar && \Storage::disk('public')->exists($product->gambar)) {
+                \Storage::disk('public')->delete($product->gambar);
+            }
+            $validated['gambar'] = $this->uploadAndConvertToWebp($request->file('gambar'));
+        }
 
         // Konversi string kosong menjadi null agar database bersih
         $validated['harga_grosir'] = $validated['harga_grosir'] ? (int) $validated['harga_grosir'] : null;
@@ -202,7 +218,7 @@ class ProductController extends Controller
         $products = $query->orderByDesc('id')
             ->limit(50)
             ->get([
-                'id', 'kode_barang', 'nama', 'stok', 'satuan', 
+                'id', 'kode_barang', 'nama', 'gambar', 'stok', 'satuan', 
                 'harga_beli', 'harga_jual', 'harga_grosir', 'min_qty_grosir'
             ]);
 
@@ -225,6 +241,52 @@ class ProductController extends Controller
             return back()->with('success', 'Data produk berhasil diimport!');
         } catch (\Exception $e) {
             return back()->with('error', 'Terjadi kesalahan saat import: ' . $e->getMessage());
+        }
+    }
+
+    private function uploadAndConvertToWebp($file)
+    {
+        // 1. Buat nama file unik
+        $filename = time() . '_' . uniqid() . '.webp';
+        $path = 'products/' . $filename;
+
+        // 2. Ambil konten gambar asli
+        $imageContent = file_get_contents($file->getRealPath());
+        $image = imagecreatefromstring($imageContent);
+
+        if (!$image) {
+            throw new \Exception('Format gambar tidak didukung.');
+        }
+
+        // 3. Konversi dan simpan sebagai WebP (kualitas 80%)
+        $storagePath = storage_path('app/public/' . $path);
+        // Pastikan folder ada
+        if (!file_exists(dirname($storagePath))) {
+            mkdir(dirname($storagePath), 0755, true);
+        }
+        
+        imagewebp($image, $storagePath, 80);
+        imagedestroy($image);
+
+        return $path;
+    }
+
+    public function destroy(Product $product)
+    {
+        try {
+            // Cek apakah produk sudah memiliki riwayat penjualan atau pergerakan stok
+            if ($product->saleItems()->exists() || $product->stockMovements()->exists()) {
+                // Tolak hapus jika ada riwayat
+                return back()->with('error', 'Produk tidak bisa dihapus permanen karena sudah memiliki riwayat transaksi/stok. Silakan edit produk dan ubah status menjadi Nonaktif.');
+            }
+
+            // Jika tidak ada riwayat, hapus permanen
+            $product->delete();
+
+            return back()->with('success', 'Produk berhasil dihapus permanen.');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Terjadi kesalahan saat menghapus produk.');
         }
     }
 }

@@ -85,46 +85,68 @@
     }
 }
 
-@media print {
-    @page {
-        size: 80mm auto;
-        /* Memaksa ukuran kertas thermal 80mm */
-        margin: 0;
-        /* Menghapus margin bawaan browser */
-    }
+@page {
+    size: 80mm auto;
+    margin: 0;
+}
 
+@media print {
+
+    html,
     body {
+        width: 80mm;
+        height: auto;
         margin: 0;
         padding: 0;
         background: #fff;
     }
 
-    /* Sembunyikan semua elemen di halaman */
-    body * {
-        visibility: hidden;
+    /* 1. Hapus (display:none) semua elemen yang bukan struk */
+    body *:not(#print-section):not(#print-section *):not(:has(#print-section)) {
+        display: none !important;
     }
 
-    /* Tampilkan HANYA area struk */
-    #print-section,
-    #print-section * {
-        visibility: visible;
+    /* 2. Netralkan layout semua pembungkus struk (sidebar offset, grid, max-width, dll.) */
+    body :has(#print-section) {
+        display: block !important;
+        position: static !important;
+        width: auto !important;
+        max-width: none !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        overflow: visible !important;
+        transform: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
     }
 
+    /* 3. Struknya sendiri */
     #print-section {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        /* Lebar mengikuti @page (80mm) */
-        padding: 5px;
+        display: block !important;
+        position: static !important;
+        width: 80mm !important;
+        max-width: 80mm !important;
+        box-sizing: border-box;
+        margin: 0 !important;
+        padding: 2mm 4mm !important;
+        background: #fff !important;
+        box-shadow: none !important;
         font-family: 'Courier New', Courier, monospace;
-        /* Font standar struk */
         font-size: 12px;
         line-height: 1.2;
     }
 
-    /* Sembunyikan tombol atau elemen lain yang tidak perlu dicetak */
-    .no-print {
+    /* Printer thermal hitam-putih: teks abu-abu jadi pudar/bintik-bintik */
+    #print-section,
+    #print-section * {
+        color: #000 !important;
+    }
+
+    .no-print,
+    .no-print * {
         display: none !important;
     }
 }

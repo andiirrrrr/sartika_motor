@@ -1,10 +1,11 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
 import {
     Plus, Upload, Download, Search, Barcode,
-    Package, AlertTriangle, XCircle, FileText, Pencil, Trash2
+    Package, AlertTriangle, XCircle, FileText, Pencil, Trash2,
+    X, Info, RefreshCw, PackageOpen
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import { toast } from 'sonner';
@@ -20,6 +21,7 @@ interface Product {
     stok: string;
     stok_minimum: string;
     aktif: boolean;
+    gambar: string | null;
 }
 
 interface PaginatedData<T> {
@@ -52,9 +54,16 @@ export default function Index({ products, categories, filters, stats }: Props) {
     const [kategoriId, setKategoriId] = useState(filters.kategori_id ? String(filters.kategori_id) : '');
     const [perPage, setPerPage] = useState(filters.per_page);
 
-    // State untuk Modal Hapus
-    const [deleteModal, setDeleteModal] = useState<{ show: boolean; id: number | null; nama: string; kode: string }>({
-        show: false, id: null, nama: '', kode: ''
+    // State untuk Modal Hapus (Sudah diperbaiki dengan tambahan stok & satuan)
+    const [deleteModal, setDeleteModal] = useState<{
+        show: boolean;
+        id: number | null;
+        nama: string;
+        kode: string;
+        stok: string;
+        satuan: string;
+    }>({
+        show: false, id: null, nama: '', kode: '', stok: '0', satuan: ''
     });
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -89,22 +98,46 @@ export default function Index({ products, categories, filters, stats }: Props) {
         }
     };
 
-    // Handler Hapus
+    // Handler Hapus (Sudah diperbaiki untuk mengambil stok & satuan)
     const confirmDelete = (product: Product) => {
-        setDeleteModal({ show: true, id: product.id, nama: product.nama, kode: product.kode_barang });
+        setDeleteModal({
+            show: true,
+            id: product.id,
+            nama: product.nama,
+            kode: product.kode_barang,
+            stok: product.stok,
+            satuan: product.satuan
+        });
     };
 
     const executeDelete = () => {
         if (!deleteModal.id) return;
         setIsDeleting(true);
+
         router.delete(`/products/${deleteModal.id}`, {
             onSuccess: () => {
-                setDeleteModal({ show: false, id: null, nama: '', kode: '' });
-                toast.success('Produk berhasil dihapus');
+                setDeleteModal({ show: false, id: null, nama: '', kode: '', stok: '0', satuan: '' });
+                // Notifikasi sukses/error otomatis ditangani oleh app.tsx
             },
-            onFinish: () => setIsDeleting(false)
+            onFinish: () => setIsDeleting(false),
+            preserveScroll: true,
         });
     };
+
+    // Keyboard Shortcut untuk Modal Hapus (Enter/Esc)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!deleteModal.show) return;
+            if (e.key === 'Escape') {
+                setDeleteModal({ show: false, id: null, nama: '', kode: '', stok: '0', satuan: '' });
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                executeDelete();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [deleteModal.show, deleteModal.id]); // Dependensi disesuaikan
 
     return (
         <AdminLayout>
@@ -266,8 +299,12 @@ export default function Index({ products, categories, filters, stats }: Props) {
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
-                                                            <Package className="size-5 text-gray-400" />
+                                                        <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 overflow-hidden border border-gray-200 dark:border-zinc-700">
+                                                            {p.gambar ? (
+                                                                <img src={`/storage/${p.gambar}`} alt={p.nama} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <span className="font-bold text-lg text-[#f5b800] uppercase">{p.nama.charAt(0)}</span>
+                                                            )}
                                                         </div>
                                                         <div className="min-w-0">
                                                             <Link href={`/products/${p.id}`} className="font-semibold text-gray-900 dark:text-white hover:text-[#f5b800] truncate block">
@@ -355,21 +392,75 @@ export default function Index({ products, categories, filters, stats }: Props) {
 
             {/* MODAL KONFIRMASI HAPUS */}
             {deleteModal.show && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-xl max-w-md w-full p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
-                        <div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center mb-4">
-                            <Trash2 className="size-6" />
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-in fade-in transition-all"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) {
+                            setDeleteModal({ show: false, id: null, nama: '', kode: '', stok: '0', satuan: '' });
+                        }
+                    }}
+                >
+                    <div className="relative w-full max-w-md bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl p-6 flex flex-col gap-5 animate-in zoom-in-95 duration-200">
+
+                        {/* Top: Icon & Close Button */}
+                        <div className="flex items-start justify-between">
+                            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400 shadow-sm">
+                                <Trash2 className="size-6" />
+                            </div>
+                            <button
+                                onClick={() => setDeleteModal({ show: false, id: null, nama: '', kode: '', stok: '0', satuan: '' })}
+                                className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-zinc-900 text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center justify-center transition-colors"
+                            >
+                                <X className="size-5" />
+                            </button>
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Hapus Produk dari Katalog?</h3>
-                        <p className="text-sm text-gray-500 mt-2">
-                            Apakah Anda yakin ingin menghapus <strong className="text-gray-900 dark:text-white">{deleteModal.nama}</strong> (<span className="font-mono text-gray-900 dark:text-white">{deleteModal.kode}</span>)? Seluruh histori penjualan tetap tersimpan namun SKU ini tidak dapat ditransaksikan di kasir.
-                        </p>
-                        <div className="flex items-center justify-end gap-2 mt-6">
-                            <Button variant="outline" onClick={() => setDeleteModal({ show: false, id: null, nama: '', kode: '' })} disabled={isDeleting}>
+
+                        {/* Title & Description */}
+                        <div className="space-y-2">
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+                                Yakin Ingin Menghapus Produk Ini?
+                            </h2>
+                            <p className="text-sm text-gray-500 leading-relaxed">
+                                Item <strong className="text-gray-900 dark:text-white">"{deleteModal.nama}"</strong> <span className="bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 text-[11px] px-2 py-0.5 rounded font-mono">(SKU: {deleteModal.kode})</span> akan dihapus secara permanen dari sistem inventaris.
+                            </p>
+                        </div>
+
+                        {/* Impact Summary */}
+                        <div className="bg-gray-50 dark:bg-zinc-900 rounded-xl p-3 flex items-center gap-3 border border-gray-100 dark:border-zinc-800">
+                            <PackageOpen className="size-5 text-[#f5b800] shrink-0" />
+                            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 flex-wrap">
+                                <span className="font-bold text-gray-900 dark:text-white">Sisa Stok: {deleteModal.stok} {deleteModal.satuan}</span>
+                                <span>•</span>
+                                <span>Riwayat transaksi lama tetap tersimpan.</span>
+                            </div>
+                        </div>
+
+                        {/* Advisory Note */}
+                        <div className="bg-gray-100/50 dark:bg-zinc-800/50 rounded-xl px-3 py-2 flex items-center gap-2 text-xs text-gray-500">
+                            <Info className="size-4" />
+                            <span>Tindakan ini tidak dapat dibatalkan.</span>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-3 pt-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setDeleteModal({ show: false, id: null, nama: '', kode: '', stok: '0', satuan: '' })}
+                                disabled={isDeleting}
+                                className="flex-1 h-11 rounded-xl"
+                            >
                                 Batal
                             </Button>
-                            <Button onClick={executeDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700 text-white">
-                                {isDeleting ? 'Menghapus...' : 'Ya, Hapus Produk'}
+                            <Button
+                                onClick={executeDelete}
+                                disabled={isDeleting}
+                                className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-md active:scale-95 transition-all"
+                            >
+                                {isDeleting ? (
+                                    <><RefreshCw className="mr-2 size-4 animate-spin" /> Menghapus...</>
+                                ) : (
+                                    <><Trash2 className="mr-2 size-4" /> Ya, Hapus</>
+                                )}
                             </Button>
                         </div>
                     </div>

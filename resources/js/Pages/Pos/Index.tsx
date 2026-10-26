@@ -21,6 +21,7 @@ interface Product {
     harga_jual: number;
     harga_grosir: number | null;
     min_qty_grosir: string | null;
+    gambar: string | null;
 }
 
 interface Props {
@@ -323,7 +324,6 @@ export default function Index({ categories }: Props) {
                                 className="flex-1 h-12 rounded-xl bg-[#f5b800] hover:bg-[#e0a800] text-gray-900 text-sm font-bold shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                             >
                                 {processingShift ? 'Membuka Kasir...' : 'Buka Shift & Masuk POS'}
-                                <span className="px-1.5 py-0.5 rounded bg-black/10 text-[10px]">Enter ↵</span>
                             </button>
                         </div>
                     </div>
@@ -349,7 +349,7 @@ export default function Index({ categories }: Props) {
                             <input
                                 ref={searchInputRef}
                                 type="text"
-                                placeholder="Ketik nama, SKU, atau scan barcode langsung... [F2]"
+                                placeholder="Ketik nama, SKU, atau scan barcode langsung..."
                                 value={search}
                                 onChange={(e) => {
                                     setSearch(e.target.value);
@@ -418,8 +418,15 @@ export default function Index({ categories }: Props) {
                                         onClick={() => handleTambahKeKeranjang(p)}
                                         className="group relative bg-white dark:bg-[#232019] rounded-2xl p-3 flex flex-col justify-between shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer min-h-45 border border-gray-100 dark:border-zinc-800"
                                     >
+                                        {/* GAMBAR PRODUK */}
                                         <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-zinc-800 mb-2 flex items-center justify-center">
-                                            <PackageOpen className="size-10 text-gray-300 dark:text-zinc-600" />
+                                            {p.gambar ? (
+                                                <img src={`/storage/${p.gambar}`} alt={p.nama} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                            ) : (
+                                                <div className="w-full h-full bg-[#f5b800]/10 flex items-center justify-center">
+                                                    <span className="text-4xl font-bold text-[#f5b800]">{p.nama.charAt(0).toUpperCase()}</span>
+                                                </div>
+                                            )}
                                             <span className={cn(
                                                 "absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm",
                                                 stokNum <= 0 ? "bg-red-100 text-red-700" :
@@ -539,7 +546,7 @@ export default function Index({ categories }: Props) {
                             onClick={() => setShowPayment(true)}
                             className="w-full h-16 rounded-xl bg-[#f5b800] hover:bg-[#e0a800] text-gray-900 font-bold text-lg shadow-lg transition-transform active:scale-[0.99] flex items-center justify-center gap-2"
                         >
-                            <Wallet className="size-6" /> Lanjut ke Pembayaran [Space/F9]
+                            <Wallet className="size-6" /> Lanjut ke Pembayaran
                         </Button>
 
                         <Button
@@ -710,7 +717,7 @@ export default function Index({ categories }: Props) {
                         {/* Footer Actions */}
                         <div className="px-6 py-4 bg-gray-50 dark:bg-zinc-950 border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between gap-4">
                             <Button variant="outline" onClick={() => setShowPayment(false)} className="h-12 px-6">
-                                Batal [Esc]
+                                Batal
                             </Button>
                             <Button
                                 onClick={handleCheckout}
@@ -718,7 +725,6 @@ export default function Index({ categories }: Props) {
                                 className="flex-1 h-12 bg-[#f5b800] hover:bg-[#e0a800] text-gray-900 font-bold text-base shadow-md rounded-xl"
                             >
                                 {isSubmitting ? 'Memproses...' : 'Selesaikan & Buka Laci'}
-                                <span className="ml-2 px-2 py-0.5 rounded bg-black/10 text-[10px]">[Enter]</span>
                             </Button>
                         </div>
                     </div>
@@ -950,7 +956,7 @@ export default function Index({ categories }: Props) {
                         </div>
 
                         <div className="px-6 py-4 bg-gray-50 dark:bg-zinc-950 border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between">
-                            <Button variant="outline" onClick={() => setShowCloseShift(false)}>Batal [Esc]</Button>
+                            <Button variant="outline" onClick={() => setShowCloseShift(false)}>Batal</Button>
                             <Button onClick={handleCloseShift} disabled={isClosingShift} className="bg-[#f5b800] hover:bg-[#e0a800] text-gray-900 font-bold px-6">
                                 <Lock className="size-4 mr-2" /> {isClosingShift ? 'Memproses...' : 'Konfirmasi & Tutup'}
                             </Button>

@@ -98,9 +98,6 @@ export default function Index({ shifts, stats }: Props) {
                                 <Clock className="size-4 mr-2" /> Tutup Shift Saat Ini
                             </Button>
                         )}
-                        <Button variant="outline" className="h-10 px-4 rounded-xl shadow-sm">
-                            <Download className="size-4 mr-2" /> Ekspor Laporan
-                        </Button>
                     </div>
                 </div>
 
@@ -165,17 +162,12 @@ export default function Index({ shifts, stats }: Props) {
                     </div>
 
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse min-w-275">
+                        <table className="w-full text-left border-collapse min-w-175">
                             <thead>
                                 <tr className="bg-gray-50 dark:bg-[#1C1A14] text-[10px] uppercase tracking-wider text-gray-500">
-                                    <th className="py-3 px-4 font-semibold">ID Shift & Mesin</th>
+                                    <th className="py-3 px-4 font-semibold">ID Shift</th>
                                     <th className="py-3 px-4 font-semibold">Petugas Kasir</th>
                                     <th className="py-3 px-4 font-semibold">Waktu & Durasi</th>
-                                    <th className="py-3 px-4 text-right font-semibold">Modal Awal</th>
-                                    <th className="py-3 px-4 text-right font-semibold">Penjualan Tunai</th>
-                                    <th className="py-3 px-4 text-right font-semibold">Non-Tunai</th>
-                                    <th className="py-3 px-4 text-right font-semibold">Seharusnya</th>
-                                    <th className="py-3 px-4 text-right font-semibold">Fisik</th>
                                     <th className="py-3 px-4 text-right font-semibold">Selisih</th>
                                     <th className="py-3 px-4 text-center font-semibold">Status</th>
                                     <th className="py-3 px-4 text-center font-semibold">Aksi</th>
@@ -183,15 +175,12 @@ export default function Index({ shifts, stats }: Props) {
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-zinc-800/50 text-sm">
                                 {shifts.data.length === 0 ? (
-                                    <tr><td colSpan={11} className="py-12 text-center text-gray-500">Belum ada riwayat shift.</td></tr>
+                                    <tr><td colSpan={6} className="py-12 text-center text-gray-500">Belum ada riwayat shift.</td></tr>
                                 ) : (
                                     shifts.data.map((s) => (
                                         <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-[#2B271F] transition-colors">
-                                            <td className="py-4 px-4">
-                                                <div className="font-semibold text-gray-900 dark:text-white">SFT-{s.id.toString().padStart(5, '0')}</div>
-                                                <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-0.5">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-[#f5b800]"></span> Register Utama
-                                                </div>
+                                            <td className="py-4 px-4 font-semibold text-gray-900 dark:text-white">
+                                                SFT-{s.id.toString().padStart(5, '0')}
                                             </td>
                                             <td className="py-4 px-4">
                                                 <div className="flex items-center gap-2">
@@ -212,30 +201,23 @@ export default function Index({ shifts, stats }: Props) {
                                                     Durasi: {getDuration(s.waktu_buka, s.waktu_tutup)}
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-4 text-right text-gray-500">Rp {formatRupiah(s.modal_awal)}</td>
-                                            <td className="py-4 px-4 text-right font-medium text-green-600 dark:text-green-400">Rp {formatRupiah(s.total_penjualan_tunai)}</td>
-                                            <td className="py-4 px-4 text-right text-gray-500">Rp {formatRupiah(s.sales_sum_total || 0)}</td>
-                                            <td className="py-4 px-4 text-right font-semibold text-gray-900 dark:text-white">Rp {formatRupiah(s.uang_seharusnya)}</td>
-                                            <td className="py-4 px-4 text-right font-semibold text-gray-900 dark:text-white bg-gray-50 dark:bg-zinc-800/30">
-                                                {s.uang_fisik !== null ? `Rp ${formatRupiah(s.uang_fisik)}` : '-'}
-                                            </td>
                                             <td className="py-4 px-4 text-right">
                                                 {s.selisih === null ? (
                                                     <span className="text-gray-400">-</span>
                                                 ) : s.selisih === 0 ? (
                                                     <span className="inline-flex px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-gray-400 text-[10px] font-bold">Seimbang</span>
                                                 ) : s.selisih < 0 ? (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[10px] font-bold">
+                                                    <span className="inline-flex px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-[10px] font-bold">
                                                         -Rp {formatRupiah(Math.abs(s.selisih))}
                                                     </span>
                                                 ) : (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] font-bold">
+                                                    <span className="inline-flex px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] font-bold">
                                                         +Rp {formatRupiah(s.selisih)}
                                                     </span>
                                                 )}
                                             </td>
                                             <td className="py-4 px-4 text-center">
-                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${s.status === 'buka' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${s.status === 'buka' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                                                     {s.status === 'buka' ? 'Aktif' : 'Selesai'}
                                                 </span>
                                             </td>
@@ -280,41 +262,74 @@ export default function Index({ shifts, stats }: Props) {
                         </div>
 
                         <div className="p-6 overflow-y-auto space-y-6">
-                            {/* Summary Strip */}
+                            {/* Info Shift */}
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-gray-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-gray-100 dark:border-zinc-800">
                                 <div>
                                     <span className="text-[10px] text-gray-500 uppercase font-semibold">Kasir</span>
                                     <p className="font-bold text-gray-900 dark:text-white text-sm">{selectedShift.user?.nama}</p>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] text-gray-500 uppercase font-semibold">Modal Awal</span>
-                                    <p className="font-bold text-gray-900 dark:text-white text-sm">Rp {formatRupiah(selectedShift.modal_awal)}</p>
+                                    <span className="text-[10px] text-gray-500 uppercase font-semibold">Dibuka</span>
+                                    <p className="font-bold text-gray-900 dark:text-white text-sm">
+                                        {new Date(selectedShift.waktu_buka).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                    </p>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] text-gray-500 uppercase font-semibold">Uang Fisik</span>
-                                    <p className="font-bold text-gray-900 dark:text-white text-sm">Rp {formatRupiah(selectedShift.uang_fisik || 0)}</p>
+                                    <span className="text-[10px] text-gray-500 uppercase font-semibold">Ditutup</span>
+                                    <p className="font-bold text-gray-900 dark:text-white text-sm">
+                                        {selectedShift.waktu_tutup
+                                            ? new Date(selectedShift.waktu_tutup).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                                            : '-'}
+                                    </p>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] text-gray-500 uppercase font-semibold">Selisih</span>
-                                    <p className={`font-bold text-sm ${selectedShift.selisih < 0 ? 'text-red-500' : 'text-green-600'}`}>
-                                        {selectedShift.selisih > 0 ? '+' : ''}Rp {formatRupiah(selectedShift.selisih || 0)}
+                                    <span className="text-[10px] text-gray-500 uppercase font-semibold">Durasi</span>
+                                    <p className="font-bold text-gray-900 dark:text-white text-sm">
+                                        {getDuration(selectedShift.waktu_buka, selectedShift.waktu_tutup)}
                                     </p>
                                 </div>
                             </div>
 
-                            {/* Detail Kas */}
+                            {/* Rincian Kas */}
                             <div className="space-y-3">
                                 <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                     <Wallet className="size-4 text-[#f5b800]" /> Rincian Kas
                                 </h4>
                                 <div className="border border-gray-100 dark:border-zinc-800 rounded-xl p-4 text-sm space-y-2">
                                     <div className="flex justify-between">
-                                        <span className="text-gray-500">Penjualan Tunai</span>
-                                        <span className="font-semibold">Rp {formatRupiah(selectedShift.total_penjualan_tunai)}</span>
+                                        <span className="text-gray-500">Modal Awal</span>
+                                        <span className="font-semibold">Rp {formatRupiah(selectedShift.modal_awal)}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-gray-500">Total Uang Seharusnya</span>
+                                        <span className="text-gray-500">Penjualan Tunai</span>
+                                        <span className="font-semibold text-green-600 dark:text-green-400">Rp {formatRupiah(selectedShift.total_penjualan_tunai)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Penjualan Non-Tunai</span>
+                                        <span className="font-semibold">Rp {formatRupiah(selectedShift.sales_sum_total || 0)}</span>
+                                    </div>
+                                    <div className="flex justify-between border-t border-gray-100 dark:border-zinc-800 pt-2">
+                                        <span className="font-bold text-gray-900 dark:text-white">Uang Seharusnya</span>
                                         <span className="font-bold text-[#f5b800]">Rp {formatRupiah(selectedShift.uang_seharusnya)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="font-bold text-gray-900 dark:text-white">Uang Fisik</span>
+                                        <span className="font-bold text-gray-900 dark:text-white">
+                                            {selectedShift.uang_fisik !== null ? `Rp ${formatRupiah(selectedShift.uang_fisik)}` : '-'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between border-t border-gray-100 dark:border-zinc-800 pt-2">
+                                        <span className="font-bold text-gray-900 dark:text-white">Selisih</span>
+                                        <span className={`font-bold ${selectedShift.selisih === null || selectedShift.selisih === 0
+                                            ? 'text-gray-500'
+                                            : selectedShift.selisih < 0 ? 'text-red-500' : 'text-blue-600'
+                                            }`}>
+                                            {selectedShift.selisih === null
+                                                ? '-'
+                                                : selectedShift.selisih === 0
+                                                    ? 'Seimbang'
+                                                    : `${selectedShift.selisih > 0 ? '+' : '-'}Rp ${formatRupiah(Math.abs(selectedShift.selisih))}`}
+                                        </span>
                                     </div>
                                 </div>
                             </div>

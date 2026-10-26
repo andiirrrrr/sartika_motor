@@ -11,15 +11,33 @@ use Inertia\Response;
 
 class StockInController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $search = trim((string) $request->input('search', ''));
+
         $stockIns = StockIn::with(['product:id,kode_barang,nama,satuan', 'supplier:id,nama', 'createdBy:id,nama'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    // Cari berdasarkan nama produk atau kode barang
+                    $q->whereHas('product', function ($prodQuery) use ($search) {
+                        $prodQuery->where('nama', 'like', "%{$search}%")
+                                  ->orWhere('kode_barang', 'like', "%{$search}%");
+                    })
+                    // ATAU cari berdasarkan nama supplier
+                    ->orWhereHas('supplier', function ($supQuery) use ($search) {
+                        $supQuery->where('nama', 'like', "%{$search}%");
+                    });
+                });
+            })
             ->orderByDesc('id')
             ->paginate(20)
-            ->withQueryString();
+            ->withQueryString(); // Penting agar parameter search tidak hilang saat pindah halaman
 
         return Inertia::render('StockIn/Index', [
             'stockIns' => $stockIns,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 

@@ -32,24 +32,93 @@ Route::post('/logout', [AuthController::class, 'logout'])
 
 // Authenticated (sudah login)
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', function () {
-        $today = now()->toDateString();
-        
-        // 1. Statistik Hari Ini
-        $omzetHariIni = \App\Models\Sale::whereDate('tanggal', $today)->sum('total');
-        $transaksiHariIni = \App\Models\Sale::whereDate('tanggal', $today)->count();
-        
-        // 2. Statistik Master
-        $totalProduk = \App\Models\Product::count();
-        $stokMenipis = \App\Models\Product::stokMenipis()->count();
-        
-        // 3. 5 Transaksi Terakhir
-        $recentSales = \App\Models\Sale::with('kasir:id,nama')
+    Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
+        $period = $request->input('period', 'today');
+
+        // Filter periode (dipakai ulang untuk semua query)
+        $applyPeriod = function ($query) use ($period) {
+            if ($period === 'today') {
+                $query->whereDate('tanggal', now()->toDateString());
+            } elseif ($period === '7days') {
+                $query->whereDate('tanggal', '>=', now()->subDays(7)->toDateString())
+                    ->whereDate('tanggal', '<=', now()->toDateString());
+            } elseif ($period === 'month') {
+                $query->whereMonth('tanggal', now()->month)
+                    ->whereYear('tanggal', now()->year);
+            }
+            return $query;
+        };
+
+        $salesQuery = $applyPeriod(\App\Models\Sale::query());
+
+        $omzet = $salesQuery->sum('total');
+        $transaksi = $salesQuery->count();
+
+        $recentSales = (clone $salesQuery)->with('kasir:id,nama')
             ->orderByDesc('id')
             ->limit(5)
             ->get(['id', 'no_transaksi', 'tanggal', 'total', 'metode_bayar', 'kasir_id']);
 
-        // 4. 5 Produk yang stoknya paling kritis
+        // Omzet periode sebelumnya, untuk persentase pertumbuhan
+        $prevQuery = \App\Models\Sale::query();
+        if ($period === 'today') {
+            $prevQuery->whereDate('tanggal', now()->subDay()->toDateString());
+        } elseif ($period === '7days') {
+            $prevQuery->whereDate('tanggal', '>=', now()->subDays(15)->toDateString())
+                    ->whereDate('tanggal', '<=', now()->subDays(8)->toDateString());
+        } elseif ($period === 'month') {
+            $prevMonth = now()->subMonthNoOverflow();
+            $prevQuery->whereMonth('tanggal', $prevMonth->month)
+                    ->whereYear('tanggal', $prevMonth->year);
+        }
+        $prevOmzet = $prevQuery->sum('total');
+        $growth = $prevOmzet > 0 ? round((($omzet - $prevOmzet) / $prevOmzet) * 100, 1) : null;
+
+        // Tren penjualan: per jam untuk "Hari Ini", per tanggal untuk lainnya
+        $isToday = $period === 'today';
+        $salesTrend = (clone $salesQuery)
+            ->selectRaw(($isToday ? 'HOUR(tanggal)' : 'DATE(tanggal)') . ' as bucket, SUM(total) as total_omzet')
+            ->groupBy('bucket')
+            ->orderBy('bucket')
+            ->get()
+            ->map(fn ($r) => [
+                'label' => $isToday
+                    ? str_pad($r->bucket, 2, '0', STR_PAD_LEFT) . ':00'
+                    : \Carbon\Carbon::parse($r->bucket)->translatedFormat('d M'),
+                'total_omzet' => (float) $r->total_omzet,
+            ]);
+
+        // Metode pembayaran
+        $paymentMethods = (clone $salesQuery)
+            ->selectRaw('metode_bayar, COUNT(*) as total_transaksi, SUM(total) as total_revenue')
+            ->groupBy('metode_bayar')
+            ->get()
+            ->map(fn ($r) => [
+                'metode_bayar' => $r->metode_bayar,
+                'total_transaksi' => (int) $r->total_transaksi,
+                'total_revenue' => (float) $r->total_revenue,
+            ]);
+
+        // Produk terlaris (SESUAIKAN nama tabel & kolom, lihat catatan di bawah)
+        $topProducts = $applyPeriod(
+                \DB::table('sale_items')
+                    ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                    ->join('products', 'products.id', '=', 'sale_items.product_id')
+            )
+            ->selectRaw('products.nama as nama_produk, SUM(sale_items.qty) as total_qty, SUM(sale_items.subtotal) as total_revenue')
+            ->groupBy('products.id', 'products.nama')
+            ->orderByDesc('total_revenue')
+            ->limit(5)
+            ->get()
+            ->map(fn ($r) => [
+                'nama_produk' => $r->nama_produk,
+                'total_qty' => (float) $r->total_qty,
+                'total_revenue' => (float) $r->total_revenue,
+            ]);
+
+        // Statistik master (tidak terpengaruh tanggal)
+        $totalProduk = \App\Models\Product::count();
+        $stokMenipis = \App\Models\Product::stokMenipis()->count();
         $lowStockProducts = \App\Models\Product::stokMenipis()
             ->orderBy('stok', 'asc')
             ->limit(5)
@@ -57,13 +126,18 @@ Route::middleware('auth')->group(function () {
 
         return Inertia::render('Dashboard', [
             'stats' => [
-                'omzet' => $omzetHariIni,
-                'transaksi' => $transaksiHariIni,
+                'omzet' => $omzet,
+                'transaksi' => $transaksi,
                 'produk' => $totalProduk,
                 'stok_kritis' => $stokMenipis,
+                'growth' => $growth,
             ],
             'recentSales' => $recentSales,
             'lowStockProducts' => $lowStockProducts,
+            'salesTrend' => $salesTrend,
+            'topProducts' => $topProducts,
+            'paymentMethods' => $paymentMethods,
+            'filters' => ['period' => $period],
         ]);
     })->name('dashboard');
 
@@ -86,6 +160,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/products/export', [\App\Http\Controllers\ProductController::class, 'export'])->name('products.export');
         Route::post('/products/import', [\App\Http\Controllers\ProductController::class, 'import'])->name('products.import');
         Route::put('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update'])->name('products.update');
+        Route::delete('/products/{product}', [\App\Http\Controllers\ProductController::class, 'destroy'])->name('products.destroy');
+        
         Route::get('/stock-in', [\App\Http\Controllers\StockInController::class, 'index'])->name('stock-in.index');
         Route::get('/stock-in/create', [\App\Http\Controllers\StockInController::class, 'create'])->name('stock-in.create');
         Route::post('/stock-in', [\App\Http\Controllers\StockInController::class, 'store'])->name('stock-in.store');

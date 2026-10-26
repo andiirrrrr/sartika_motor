@@ -4,7 +4,8 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { Button } from '@/Components/ui/button';
 import {
     ArrowLeft, Save, Search, Package, Calendar,
-    MapPin, FileText, CheckCircle2, Barcode
+    MapPin, FileText, CheckCircle2, Barcode,
+    Info
 } from 'lucide-react';
 
 interface Product {
@@ -164,10 +165,15 @@ export default function Create({ suppliers }: Props) {
                                         onChange={(e) => setData('supplier_id', e.target.value)}
                                         className="w-full h-10 pl-9 pr-3 rounded-lg bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none appearance-none"
                                     >
-                                        <option value="">-- Pilih Supplier --</option>
+                                        <option value="">-- Pilih Supplier (Opsional) --</option>
                                         {suppliers.map((s) => <option key={s.id} value={s.id}>{s.nama}</option>)}
                                     </select>
                                 </div>
+                                {!data.supplier_id && (
+                                    <p className="mt-1.5 text-[10px] text-orange-500 flex items-center gap-1">
+                                        <Info className="size-3" /> Kosongkan hanya jika ini stok awal (opname).
+                                    </p>
+                                )}
                             </div>
 
                             <div>

@@ -2,7 +2,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEvent, useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, Save, Calculator, Image as ImageIcon, Barcode, Tag, Layers, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Save, Calculator, Image as ImageIcon, Barcode, Tag, Layers, X, AlertCircle } from 'lucide-react';
 
 interface Props {
     product: {
@@ -17,6 +17,7 @@ interface Props {
         min_qty_grosir: string | null;
         stok_minimum: string;
         aktif: boolean;
+        gambar: string | null;
     };
     categories: { id: number; nama: string }[];
 }
@@ -29,7 +30,11 @@ export default function Edit({ product, categories }: Props) {
         return 0;
     });
 
-    const { data, setData, put, processing, errors } = useForm({
+    const [imagePreview, setImagePreview] = useState<string | null>(product.gambar ? `/storage/${product.gambar}` : null);
+
+    // PERBAIKAN: Ubah aktif menjadi 1 atau 0 agar aman saat menggunakan forceFormData
+    const { data, setData, post, processing, errors } = useForm({
+        _method: 'put',
         kode_barang: product.kode_barang,
         nama: product.nama,
         kategori_id: product.kategori_id ? product.kategori_id.toString() : '',
@@ -39,7 +44,8 @@ export default function Edit({ product, categories }: Props) {
         harga_grosir: product.harga_grosir ? product.harga_grosir.toString() : '',
         min_qty_grosir: product.min_qty_grosir ? parseFloat(product.min_qty_grosir).toString() : '',
         stok_minimum: parseFloat(product.stok_minimum).toString(),
-        aktif: product.aktif,
+        aktif: product.aktif ? 1 : 0, // 1 atau 0
+        gambar: null as File | null,
     });
 
     const handleHargaBeliChange = (val: string) => {
@@ -71,9 +77,20 @@ export default function Edit({ product, categories }: Props) {
         }
     };
 
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setData('gambar', file);
+            setImagePreview(URL.createObjectURL(file));
+        }
+    };
+
     const submit = (e: FormEvent) => {
         e.preventDefault();
-        put(`/products/${product.id}`);
+        post(`/products/${product.id}`, {
+            forceFormData: true,
+            preserveScroll: true,
+        });
     };
 
     const formatRupiah = (n: number) => new Intl.NumberFormat('id-ID').format(n);
@@ -94,7 +111,6 @@ export default function Edit({ product, categories }: Props) {
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
                         Edit Produk
                     </h1>
-                    <p className="text-xs text-gray-500 mt-1">Untuk mengubah stok, gunakan menu Stok Masuk / Stok Keluar.</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Link href="/products">
@@ -110,9 +126,20 @@ export default function Edit({ product, categories }: Props) {
 
             <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-24">
 
-                {/* LEFT COLUMN (8 Cols) */}
-                <div className="lg:col-span-8 flex flex-col gap-6">
+                {/* PANEL ERROR GLOBAL (Jika ada validasi yang gagal) */}
+                {Object.keys(errors).length > 0 && (
+                    <div className="lg:col-span-12 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-xl p-4 flex items-start gap-3">
+                        <AlertCircle className="size-5 text-red-600 shrink-0 mt-0.5" />
+                        <div className="text-sm text-red-800 dark:text-red-300">
+                            <strong className="block mb-1">Gagal Menyimpan Perubahan:</strong>
+                            <ul className="list-disc pl-4 space-y-1">
+                                {Object.values(errors).map((err, idx) => <li key={idx}>{err}</li>)}
+                            </ul>
+                        </div>
+                    </div>
+                )}
 
+                <div className="lg:col-span-8 flex flex-col gap-6">
                     {/* SEKSI 1: IDENTITAS DASAR */}
                     <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
                         <div className="flex items-center gap-3 border-b border-gray-100 dark:border-zinc-800 pb-4 mb-4">
@@ -139,7 +166,6 @@ export default function Edit({ product, categories }: Props) {
                                             required
                                         />
                                     </div>
-                                    {errors.kode_barang && <p className="text-xs text-red-500 mt-1">{errors.kode_barang}</p>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori</label>
@@ -163,7 +189,6 @@ export default function Edit({ product, categories }: Props) {
                                     className="w-full h-11 px-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-[#f5b800] outline-none transition-all"
                                     required
                                 />
-                                {errors.nama && <p className="text-xs text-red-500 mt-1">{errors.nama}</p>}
                             </div>
                         </div>
                     </div>
@@ -220,7 +245,6 @@ export default function Edit({ product, categories }: Props) {
                                         required
                                     />
                                 </div>
-                                {errors.harga_jual && <p className="text-xs text-red-500 mt-1">{errors.harga_jual}</p>}
                             </div>
                         </div>
 
@@ -288,8 +312,8 @@ export default function Edit({ product, categories }: Props) {
                             <label className="relative inline-flex items-center cursor-pointer">
                                 <input
                                     type="checkbox"
-                                    checked={data.aktif}
-                                    onChange={(e) => setData('aktif', e.target.checked)}
+                                    checked={Boolean(data.aktif)} // Konversi aman
+                                    onChange={(e) => setData('aktif', e.target.checked ? 1 : 0)} // Kirim 1 atau 0
                                     className="sr-only peer"
                                 />
                                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#f5b800]"></div>
@@ -298,18 +322,43 @@ export default function Edit({ product, categories }: Props) {
                     </div>
                 </div>
 
-                {/* RIGHT COLUMN (4 Cols) */}
                 <div className="lg:col-span-4 flex flex-col gap-6">
-                    {/* Widget Foto */}
+                    {/* Widget Foto dengan Upload */}
                     <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
                         <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
-                            <ImageIcon className="size-4 text-[#f5b800]" /> Foto Produk
+                            <ImageIcon className="size-4 text-[#f5b800]" /> Foto Produk (WebP)
                         </h3>
-                        <div className="rounded-xl border-2 border-dashed border-gray-300 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/50 p-6 flex flex-col items-center justify-center text-center cursor-not-allowed opacity-70">
-                            <div className="w-12 h-12 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm mb-2">
-                                <ImageIcon className="size-5 text-gray-400" />
-                            </div>
-                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Fitur Upload Segera Hadir</span>
+                        <div className="relative rounded-xl border-2 border-dashed border-gray-300 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/50 hover:bg-gray-100 transition-colors flex flex-col items-center justify-center text-center overflow-hidden min-h-[200px]">
+                            <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/jpg"
+                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                                onChange={handleImageChange}
+                            />
+                            {imagePreview ? (
+                                <div className="relative w-full h-48">
+                                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setData('gambar', null);
+                                            setImagePreview(null);
+                                        }}
+                                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full z-20 hover:bg-red-600 transition-colors"
+                                    >
+                                        <X className="size-4" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center p-6">
+                                    <div className="w-12 h-12 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm mb-2">
+                                        <ImageIcon className="size-5 text-gray-400" />
+                                    </div>
+                                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Klik untuk Upload Foto</span>
+                                    <span className="text-[10px] text-gray-500 mt-1">Otomatis dikonversi ke WebP (Maks 2MB)</span>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -323,8 +372,14 @@ export default function Edit({ product, categories }: Props) {
 
                         <div className="rounded-xl border border-gray-200 dark:border-zinc-700 p-3 shadow-sm bg-white dark:bg-zinc-950">
                             <div className="flex gap-3">
-                                <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
-                                    <ImageIcon className="size-6 text-gray-300" />
+                                <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 overflow-hidden">
+                                    {imagePreview ? (
+                                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                    ) : data.nama ? (
+                                        <span className="text-2xl font-bold text-[#f5b800] uppercase">{data.nama.charAt(0)}</span>
+                                    ) : (
+                                        <ImageIcon className="size-6 text-gray-300" />
+                                    )}
                                 </div>
                                 <div className="flex-1 min-w-0 flex flex-col justify-center">
                                     <p className="text-[10px] text-gray-500 uppercase tracking-wider">{categories.find(c => c.id.toString() === data.kategori_id)?.nama || 'Kategori'}</p>
@@ -337,9 +392,6 @@ export default function Edit({ product, categories }: Props) {
                             <div className="mt-3 pt-2 border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between">
                                 <div className="flex flex-col">
                                     <span className="text-sm font-bold text-[#f5b800]">Rp {formatRupiah(parseFloat(data.harga_jual) || 0)}</span>
-                                    {data.harga_grosir && data.min_qty_grosir && (
-                                        <span className="text-[9px] text-green-600 font-medium">Grosir: Rp {formatRupiah(parseFloat(data.harga_grosir) || 0)}</span>
-                                    )}
                                 </div>
                                 <span className={`text-xs px-2 py-0.5 rounded font-medium ${data.aktif ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                     {data.aktif ? 'Aktif' : 'Nonaktif'}
