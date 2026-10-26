@@ -6,7 +6,8 @@ import {
     Search, Plus, Minus, Trash2, ShoppingBag,
     Printer, Barcode, CreditCard, Wallet,
     QrCode, CheckCircle2, PackageOpen, X,
-    User, Clock, Info, Delete, Store, Lock, ArrowRight
+    User, Clock, Info, Delete, Store, Lock, ArrowRight,
+    Building2, Copy, Check
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import { toast } from 'sonner';
@@ -24,11 +25,25 @@ interface Product {
     gambar: string | null;
 }
 
-interface Props {
-    categories: { id: number; nama: string }[];
+export interface PaymentMethodItem {
+    id: number;
+    nama: string;
+    tipe: 'tunai' | 'transfer' | 'qris';
+    nama_bank: string | null;
+    nomor_rekening: string | null;
+    atas_nama: string | null;
+    qr_image: string | null;
+    aktif: boolean;
+    urutan: number;
+    keterangan: string | null;
 }
 
-export default function Index({ categories }: Props) {
+interface Props {
+    categories: { id: number; nama: string }[];
+    paymentMethods?: PaymentMethodItem[];
+}
+
+export default function Index({ categories, paymentMethods = [] }: Props) {
     const { auth, app_settings } = usePage().props as any;
     const activeShift = auth?.active_shift;
     const user = auth?.user;
@@ -109,12 +124,45 @@ export default function Index({ categories }: Props) {
     // State Pembayaran & Struk
     const [showPayment, setShowPayment] = useState(false);
     const [metodeBayar, setMetodeBayar] = useState<'tunai' | 'transfer' | 'qris'>('tunai');
+    const [selectedTransferId, setSelectedTransferId] = useState<number | null>(() => {
+        const first = paymentMethods.find(m => m.tipe === 'transfer' && m.aktif);
+        return first ? first.id : null;
+    });
+    const [selectedQrisId, setSelectedQrisId] = useState<number | null>(() => {
+        const first = paymentMethods.find(m => m.tipe === 'qris' && m.aktif);
+        return first ? first.id : null;
+    });
     const [bayar, setBayar] = useState<string>('');
+    const [copiedNorek, setCopiedNorek] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [lastSale, setLastSale] = useState<any>(null);
     const [showReceipt, setShowReceipt] = useState(false);
     const [autoPrint, setAutoPrint] = useState(true);
     const [sendWA, setSendWA] = useState(true);
+
+    // Kategori metode pembayaran aktif dari database
+    const activePaymentMethods = paymentMethods.filter(m => m.aktif);
+    const tunaiMethods = activePaymentMethods.filter(m => m.tipe === 'tunai');
+    const transferMethods = activePaymentMethods.filter(m => m.tipe === 'transfer');
+    const qrisMethods = activePaymentMethods.filter(m => m.tipe === 'qris');
+
+    // Metode aktif terpilih
+    const currentTransferMethod = transferMethods.find(m => m.id === selectedTransferId) || transferMethods[0] || null;
+    const currentQrisMethod = qrisMethods.find(m => m.id === selectedQrisId) || qrisMethods[0] || null;
+    const currentTunaiMethod = tunaiMethods[0] || null;
+
+    const currentMethod = metodeBayar === 'tunai'
+        ? currentTunaiMethod
+        : metodeBayar === 'transfer'
+            ? currentTransferMethod
+            : currentQrisMethod;
+
+    const copyNorek = (norek: string) => {
+        navigator.clipboard.writeText(norek);
+        setCopiedNorek(true);
+        toast.success('Nomor rekening disalin ke clipboard');
+        setTimeout(() => setCopiedNorek(false), 2000);
+    };
 
     const { items, addItem, updateQty, removeItem, clearCart, getTotal, getItemPrice } = useCartStore();
     const searchInputRef = useRef<HTMLInputElement>(null);
@@ -198,6 +246,7 @@ export default function Index({ categories }: Props) {
                 body: JSON.stringify({
                     items: items.map(i => ({ product_id: i.product_id, qty: i.qty })),
                     metode_bayar: metodeBayar,
+                    payment_method_id: currentMethod ? currentMethod.id : null,
                     bayar: metodeBayar === 'tunai' ? numericBayar : total,
                 })
             });
@@ -597,36 +646,45 @@ export default function Index({ categories }: Props) {
                                 </div>
                             </div>
 
-                            {/* Metode Pilihan */}
-                            <div className="grid grid-cols-3 gap-3">
-                                {[
-                                    { id: 'tunai', label: 'Tunai (Cash)', icon: Wallet, desc: 'Laci Otomatis' },
-                                    { id: 'transfer', label: 'Transfer Bank', icon: CreditCard, desc: 'BCA, Mandiri' },
-                                    { id: 'qris', label: 'QRIS Dinamis', icon: QrCode, desc: 'GoPay, OVO' }
-                                ].map((m) => (
-                                    <button
-                                        key={m.id}
-                                        onClick={() => setMetodeBayar(m.id as any)}
-                                        className={cn(
-                                            "p-3 rounded-xl flex flex-col text-left transition-all border-2",
-                                            metodeBayar === m.id
-                                                ? "bg-amber-50 dark:bg-[#2F2113] border-[#f5b800] text-gray-900 dark:text-white shadow-sm"
-                                                : "bg-gray-50 dark:bg-zinc-800 border-transparent text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-700"
-                                        )}
-                                    >
-                                        <div className="flex items-center justify-between w-full mb-2">
-                                            <m.icon className={cn("size-5", metodeBayar === m.id ? "text-[#f5b800]" : "text-gray-400")} />
-                                            {metodeBayar === m.id && <CheckCircle2 className="size-4 text-[#f5b800]" />}
-                                        </div>
-                                        <span className="text-sm font-bold">{m.label}</span>
-                                        <span className="text-[10px] text-gray-500 mt-0.5">{m.desc}</span>
-                                    </button>
-                                ))}
+                            {/* 3 Kategori Utama Pembayaran */}
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block">
+                                    Pilih Metode Pembayaran
+                                </label>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {[
+                                        { id: 'tunai', label: 'Tunai (Cash)', icon: Wallet, desc: 'Laci Kasir' },
+                                        { id: 'transfer', label: 'Transfer Bank', icon: Building2, desc: transferMethods.length > 0 ? `${transferMethods.length} Rekening` : 'BCA, BRI, dll' },
+                                        { id: 'qris', label: 'QRIS', icon: QrCode, desc: qrisMethods.length > 0 ? `${qrisMethods.length} Akun QRIS` : 'Scan Barcode' },
+                                    ].map((m) => {
+                                        const isSelected = metodeBayar === m.id;
+                                        return (
+                                            <button
+                                                key={m.id}
+                                                type="button"
+                                                onClick={() => setMetodeBayar(m.id as any)}
+                                                className={cn(
+                                                    "p-3 rounded-xl flex flex-col text-left transition-all border-2 relative",
+                                                    isSelected
+                                                        ? "bg-amber-50 dark:bg-[#2F2113] border-[#f5b800] text-gray-900 dark:text-white shadow-sm ring-1 ring-[#f5b800]"
+                                                        : "bg-gray-50 dark:bg-zinc-800 border-transparent text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-700"
+                                                )}
+                                            >
+                                                <div className="flex items-center justify-between w-full mb-1.5">
+                                                    <m.icon className={cn("size-5", isSelected ? "text-[#f5b800]" : "text-gray-400")} />
+                                                    {isSelected && <CheckCircle2 className="size-4 text-[#f5b800]" />}
+                                                </div>
+                                                <span className="text-sm font-bold">{m.label}</span>
+                                                <span className="text-[10px] text-gray-500 mt-0.5">{m.desc}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
 
-                            {/* Cash Input Section */}
+                            {/* DETAIL KHUSUS TUNAI */}
                             {metodeBayar === 'tunai' && (
-                                <div className="space-y-4 bg-gray-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-gray-100 dark:border-zinc-800">
+                                <div className="space-y-4 bg-gray-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-gray-100 dark:border-zinc-800 animate-in fade-in duration-150">
                                     <div className="flex flex-col gap-1.5">
                                         <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
                                             <span className="w-1.5 h-1.5 rounded-full bg-[#f5b800]"></span> Uang Diterima
@@ -695,6 +753,180 @@ export default function Index({ categories }: Props) {
                                 </div>
                             )}
 
+                            {/* DETAIL KHUSUS TRANSFER BANK */}
+                            {metodeBayar === 'transfer' && (
+                                <div className="space-y-4 bg-blue-50/60 dark:bg-blue-950/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/40 animate-in fade-in duration-150">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                                                <Building2 className="size-4" />
+                                            </div>
+                                            <div>
+                                                <span className="text-xs font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wider block">
+                                                    Instruksi Transfer Bank
+                                                </span>
+                                                <span className="text-[11px] text-gray-500">Pilih bank dan minta pelanggan transfer</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-xs font-medium text-gray-500">
+                                            Total: <strong className="text-gray-900 dark:text-white">Rp {formatRupiah(total)}</strong>
+                                        </div>
+                                    </div>
+
+                                    {/* PILIHAN BANK (BRI, BCA, MANDIRI, DLL) */}
+                                    {transferMethods.length > 0 ? (
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider block">
+                                                Pilih Bank Tujuan:
+                                            </label>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                {transferMethods.map((tm) => {
+                                                    const isBankActive = currentTransferMethod?.id === tm.id;
+                                                    return (
+                                                        <button
+                                                            key={tm.id}
+                                                            type="button"
+                                                            onClick={() => setSelectedTransferId(tm.id)}
+                                                            className={cn(
+                                                                "p-3 rounded-xl border-2 text-left transition-all flex items-center justify-between gap-2",
+                                                                isBankActive
+                                                                    ? "bg-white dark:bg-zinc-900 border-[#f5b800] text-gray-900 dark:text-white shadow-sm ring-1 ring-[#f5b800]"
+                                                                    : "bg-white/80 dark:bg-zinc-800/80 border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
+                                                            )}
+                                                        >
+                                                            <div className="truncate">
+                                                                <span className="text-sm font-bold block truncate">
+                                                                    {tm.nama_bank || tm.nama}
+                                                                </span>
+                                                                <span className="text-[10px] text-gray-400 block truncate font-mono">
+                                                                    {tm.nomor_rekening ? `Rek: ${tm.nomor_rekening}` : ''}
+                                                                </span>
+                                                            </div>
+                                                            {isBankActive && (
+                                                                <CheckCircle2 className="size-4 text-[#f5b800] shrink-0" />
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="p-4 bg-white dark:bg-zinc-900 rounded-xl text-center border border-dashed border-gray-200 dark:border-zinc-800 text-xs text-gray-500">
+                                            Belum ada rekening transfer bank yang aktif di sistem.
+                                        </div>
+                                    )}
+
+                                    {/* DETAIL REKENING BANK TERPILIH */}
+                                    {currentTransferMethod && (
+                                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-blue-100 dark:border-zinc-800 shadow-xs space-y-3">
+                                            <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-zinc-800">
+                                                <span className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide flex items-center gap-1.5">
+                                                    <Building2 className="size-3.5" />
+                                                    Bank {currentTransferMethod.nama_bank || currentTransferMethod.nama}
+                                                </span>
+                                                <span className="text-xs text-gray-500">
+                                                    Atas Nama: <strong className="text-gray-900 dark:text-white">{currentTransferMethod.atas_nama || '-'}</strong>
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-zinc-800/60 border border-gray-100 dark:border-zinc-700/60">
+                                                <div>
+                                                    <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Nomor Rekening</span>
+                                                    <span className="text-xl font-mono font-bold text-gray-900 dark:text-white tracking-wide">
+                                                        {currentTransferMethod.nomor_rekening || '-'}
+                                                    </span>
+                                                </div>
+                                                {currentTransferMethod.nomor_rekening && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => copyNorek(currentTransferMethod.nomor_rekening!)}
+                                                        className="px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-400 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+                                                    >
+                                                        {copiedNorek ? <Check className="size-4 text-emerald-500" /> : <Copy className="size-4" />}
+                                                        <span>{copiedNorek ? 'Tersalin' : 'Salin Rekening'}</span>
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-center justify-between text-xs px-1 text-gray-600 dark:text-gray-400">
+                                                <span>Jumlah yang harus ditransfer:</span>
+                                                <span className="font-bold text-base text-gray-900 dark:text-white">Rp {formatRupiah(total)}</span>
+                                            </div>
+
+                                            {currentTransferMethod.keterangan && (
+                                                <p className="text-[11px] text-gray-500 italic bg-blue-50/40 dark:bg-zinc-800/40 p-2 rounded-lg">
+                                                    Catatan: {currentTransferMethod.keterangan}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* DETAIL KHUSUS QRIS */}
+                            {metodeBayar === 'qris' && (
+                                <div className="space-y-3 bg-amber-50/60 dark:bg-amber-950/20 p-4 rounded-xl border border-amber-100 dark:border-amber-900/40 text-center animate-in fade-in duration-150">
+                                    <div className="flex items-center justify-center gap-2 mb-1">
+                                        <QrCode className="size-4 text-[#f5b800]" />
+                                        <span className="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider">
+                                            Scan QRIS untuk Membayar
+                                        </span>
+                                    </div>
+
+                                    {/* Jika ada lebih dari 1 QRIS, tampilkan opsi akun QRIS */}
+                                    {qrisMethods.length > 1 && (
+                                        <div className="flex flex-wrap gap-2 justify-center mb-1">
+                                            {qrisMethods.map((qm) => {
+                                                const isQrisActive = currentQrisMethod?.id === qm.id;
+                                                return (
+                                                    <button
+                                                        key={qm.id}
+                                                        type="button"
+                                                        onClick={() => setSelectedQrisId(qm.id)}
+                                                        className={cn(
+                                                            "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border",
+                                                            isQrisActive
+                                                                ? "bg-amber-500 text-gray-900 border-amber-500 shadow-sm"
+                                                                : "bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-zinc-700"
+                                                        )}
+                                                    >
+                                                        {qm.nama}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {currentQrisMethod?.qr_image ? (
+                                        <div className="inline-block bg-white p-3 rounded-2xl border-2 border-amber-300 dark:border-amber-700 shadow-md">
+                                            <img
+                                                src={`/storage/${currentQrisMethod.qr_image}`}
+                                                alt="QRIS Barcode"
+                                                className="w-48 h-48 object-contain mx-auto rounded-lg"
+                                            />
+                                            <div className="mt-2 text-xs font-bold text-gray-900">
+                                                {currentQrisMethod.nama}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="py-6 bg-white dark:bg-zinc-900 rounded-xl border border-dashed border-amber-300 dark:border-zinc-700">
+                                            <QrCode className="size-14 mx-auto text-amber-500 mb-2 opacity-60" />
+                                            <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                                                {currentQrisMethod?.nama || 'QRIS Pembayaran'}
+                                            </p>
+                                            <p className="text-[11px] text-gray-400 mt-1">
+                                                Upload barcode QRIS di menu <span className="font-semibold text-[#f5b800]">Metode Pembayaran</span>
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-amber-100 dark:border-zinc-800 flex items-center justify-between text-xs px-4">
+                                        <span className="text-gray-500">Nominal Tagihan:</span>
+                                        <span className="font-bold text-base text-[#f5b800]">Rp {formatRupiah(total)}</span>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Toggles */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <label className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-zinc-800 cursor-pointer">
@@ -724,7 +956,7 @@ export default function Index({ categories }: Props) {
                                 disabled={isSubmitting || (metodeBayar === 'tunai' && numericBayar < total)}
                                 className="flex-1 h-12 bg-[#f5b800] hover:bg-[#e0a800] text-gray-900 font-bold text-base shadow-md rounded-xl"
                             >
-                                {isSubmitting ? 'Memproses...' : 'Selesaikan & Buka Laci'}
+                                {isSubmitting ? 'Memproses...' : (metodeBayar === 'tunai' ? 'Selesaikan & Buka Laci' : 'Konfirmasi Pembayaran Lunas')}
                             </Button>
                         </div>
                     </div>
@@ -791,7 +1023,7 @@ export default function Index({ categories }: Props) {
                                         <span>Rp {formatRupiah(lastSale.total)}</span>
                                     </div>
                                     <div className="flex justify-between mt-1 text-gray-600">
-                                        <span>BAYAR ({lastSale.metode_bayar})</span>
+                                        <span>BAYAR ({lastSale.payment_method?.nama || lastSale.metode_bayar})</span>
                                         <span>Rp {formatRupiah(lastSale.bayar)}</span>
                                     </div>
                                     <div className="flex justify-between text-gray-600">

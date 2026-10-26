@@ -308,7 +308,7 @@ export default function Index({ sales, filters, stats }: Props) {
                                             </td>
                                             <td className="py-3 px-4">
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 text-xs font-medium capitalize">
-                                                    {getMetodeIcon(sale.metode_bayar)} {sale.metode_bayar}
+                                                    {getMetodeIcon(sale.metode_bayar)} {sale.payment_method?.nama || sale.metode_bayar}
                                                 </span>
                                             </td>
                                             <td className="py-3 px-4 text-center font-medium">

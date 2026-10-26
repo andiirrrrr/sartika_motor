@@ -4,7 +4,7 @@ import {
     LayoutDashboard, Package, Tags, Truck, ArrowDownToLine,
     ArrowUpFromLine, ShoppingCart, Receipt, BarChart3,
     Clock, Users, Settings, LogOut, Sun, Moon, Store,
-    Search, Bell, X, AlertTriangle
+    Search, Bell, X, AlertTriangle, CreditCard
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import { useAuth } from '@/Hooks/useAuth';
@@ -79,6 +79,7 @@ export default function AdminLayout({ children }: Props) {
     ];
 
     const configItems = [
+        { label: 'Metode Pembayaran', href: '/payment-methods', icon: CreditCard, adminOnly: true },
         { label: 'Manajemen User', href: '/users', icon: Users, adminOnly: true },
         { label: 'Pengaturan', href: '/settings', icon: Settings, adminOnly: true },
     ];

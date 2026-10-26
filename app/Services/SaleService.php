@@ -44,7 +44,7 @@ class SaleService
             if ($products->count() !== count($productIds)) {
                 $missing = array_diff($productIds, $products->keys()->all());
                 throw new CheckoutException(
-                    'Produk tidak ditemukan: ID ' . implode(', ', $missing)
+                    'Produk tidak ditemukan: ID '.implode(', ', $missing)
                 );
             }
 
@@ -112,6 +112,7 @@ class SaleService
                 'tanggal' => now(),
                 'total' => $total,
                 'metode_bayar' => $metodeBayar,
+                'payment_method_id' => $data['payment_method_id'] ?? null,
                 'bayar' => $bayar,
                 'kembalian' => $kembalian,
                 'kasir_id' => $kasirId,
@@ -144,7 +145,7 @@ class SaleService
                 );
             }
 
-            return $sale->fresh(['items', 'kasir:id,nama,username']);
+            return $sale->fresh(['items', 'kasir:id,nama,username', 'paymentMethod']);
         });
     }
 
@@ -154,9 +155,9 @@ class SaleService
      */
     private function generateNoTransaksi(): string
     {
-        $prefix = 'INV-' . now()->format('Ymd') . '-';
+        $prefix = 'INV-'.now()->format('Ymd').'-';
 
-        $last = Sale::where('no_transaksi', 'like', $prefix . '%')
+        $last = Sale::where('no_transaksi', 'like', $prefix.'%')
             ->orderByDesc('no_transaksi')
             ->lockForUpdate()
             ->first();
@@ -167,7 +168,7 @@ class SaleService
             $nextNumber = $lastNumber + 1;
         }
 
-        return $prefix . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
+        return $prefix.str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -217,9 +218,10 @@ class SaleService
         $allowed = ['tunai', 'transfer', 'qris'];
         if (! is_string($metode) || ! in_array($metode, $allowed, true)) {
             throw new InvalidArgumentException(
-                'Metode bayar harus salah satu dari: ' . implode(', ', $allowed)
+                'Metode bayar harus salah satu dari: '.implode(', ', $allowed)
             );
         }
+
         return $metode;
     }
 
@@ -239,9 +241,10 @@ class SaleService
             $bayar = (int) $bayarInput;
             if ($bayar < $total) {
                 throw new CheckoutException(
-                    'Jumlah bayar kurang dari total. Total: ' . number_format($total, 0, ',', '.')
+                    'Jumlah bayar kurang dari total. Total: '.number_format($total, 0, ',', '.')
                 );
             }
+
             return [$bayar, $bayar - $total];
         }
 

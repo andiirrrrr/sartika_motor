@@ -21,6 +21,7 @@ class Sale extends Model
         'kembalian',
         'kasir_id',
         'shift_id',
+        'payment_method_id',
     ];
 
     protected function casts(): array
@@ -43,11 +44,16 @@ class Sale extends Model
         return $this->belongsTo(User::class, 'kasir_id');
     }
 
+    public function paymentMethod(): BelongsTo
+    {
+        return $this->belongsTo(PaymentMethod::class, 'payment_method_id');
+    }
+
     public function scopeRentangTanggal(Builder $query, string $dari, string $sampai): Builder
     {
         return $query->whereBetween('tanggal', [
-            $dari . ' 00:00:00',
-            $sampai . ' 23:59:59',
+            $dari.' 00:00:00',
+            $sampai.' 23:59:59',
         ]);
     }
 }

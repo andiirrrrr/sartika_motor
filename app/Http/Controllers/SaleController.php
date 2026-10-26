@@ -16,18 +16,18 @@ class SaleController extends Controller
         $search = $request->input('search', '');
 
         // Query Dasar
-        $query = Sale::with(['kasir:id,nama'])
+        $query = Sale::with(['kasir:id,nama', 'paymentMethod:id,nama,tipe'])
             ->withCount('items')
             ->whereDate('tanggal', '>=', $from)
             ->whereDate('tanggal', '<=', $to);
 
         // Fitur Pencarian
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('no_transaksi', 'like', "%{$search}%")
-                  ->orWhereHas('kasir', function($q) use ($search) {
-                      $q->where('nama', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('kasir', function ($q) use ($search) {
+                        $q->where('nama', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -53,13 +53,13 @@ class SaleController extends Controller
                 'omzet' => $totalOmzet,
                 'transaksi' => $totalTransaksi,
                 'aov' => $aov,
-            ]
+            ],
         ]);
     }
 
     public function show(Sale $sale): Response
     {
-        $sale->load(['items', 'kasir:id,nama']);
+        $sale->load(['items', 'kasir:id,nama', 'paymentMethod']);
 
         return Inertia::render('Sales/Show', [
             'sale' => $sale,

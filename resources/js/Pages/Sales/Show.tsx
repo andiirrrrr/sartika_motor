@@ -14,6 +14,12 @@ interface Props {
         tanggal: string;
         total: number;
         metode_bayar: string;
+        payment_method?: {
+            nama: string;
+            nama_bank?: string;
+            nomor_rekening?: string;
+            atas_nama?: string;
+        } | null;
         bayar: number;
         kembalian: number;
         kasir: { nama: string };
@@ -170,7 +176,7 @@ export default function Show({ sale, app_settings }: Props) {
                                 <div className="font-mono text-xs text-gray-800 space-y-1.5">
                                     <div className="flex justify-between items-center">
                                         <span className="text-gray-500 uppercase">Metode Bayar</span>
-                                        <span className="font-bold uppercase">{sale.metode_bayar}</span>
+                                        <span className="font-bold uppercase">{sale.payment_method?.nama || sale.metode_bayar}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-gray-500">Bayar</span>
@@ -227,7 +233,10 @@ export default function Show({ sale, app_settings }: Props) {
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500">Metode Pembayaran</p>
-                                    <p className="text-sm font-bold text-gray-900 dark:text-white capitalize">{sale.metode_bayar}</p>
+                                    <p className="text-sm font-bold text-gray-900 dark:text-white capitalize">{sale.payment_method?.nama || sale.metode_bayar}</p>
+                                    {sale.payment_method?.nomor_rekening && (
+                                        <p className="text-xs text-gray-500 font-mono mt-0.5">{sale.payment_method.nama_bank} • {sale.payment_method.nomor_rekening} a.n {sale.payment_method.atas_nama}</p>
+                                    )}
                                 </div>
                             </div>
 
