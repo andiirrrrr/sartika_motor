@@ -4,8 +4,10 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { Button } from '@/Components/ui/button';
 import {
     ArrowLeft, Save, Search, Package, AlertTriangle,
-    Calendar, ShieldAlert, FileText, Info, Minus, Plus
+    Calendar, ShieldAlert, FileText, Info, Minus, Plus,
+    XCircle, Store, RefreshCw, HelpCircle
 } from 'lucide-react';
+import { Select } from '@/Components/ui/select';
 
 interface Product {
     id: number;
@@ -260,18 +262,39 @@ export default function Create() {
 
                                 <div>
                                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Alasan Pengeluaran *</label>
-                                    <select
+                                    <Select
                                         value={data.alasan}
-                                        onChange={(e) => setData('alasan', e.target.value)}
-                                        className="w-full h-14 px-4 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm font-medium focus:ring-2 focus:ring-[#f5b800] outline-none appearance-none"
-                                        required
-                                    >
-                                        <option value="rusak">Barang Rusak / Cacat</option>
-                                        <option value="hilang">Hilang / Selisih Opname</option>
-                                        <option value="pemakaian_sendiri">Penggunaan Operasional Toko</option>
-                                        <option value="koreksi">Koreksi Stok Manual</option>
-                                    </select>
-                                    {errors.alasan && <p className="text-xs text-red-500 mt-1">{errors.alasan}</p>}
+                                        onChange={(val) => setData('alasan', val)}
+                                        options={[
+                                            {
+                                                value: 'rusak',
+                                                label: 'Barang Rusak / Cacat',
+                                                description: 'Barang rusak, patah, bocor, atau kemasan cacat',
+                                                icon: XCircle,
+                                            },
+                                            {
+                                                value: 'hilang',
+                                                label: 'Hilang / Selisih Opname',
+                                                description: 'Tidak ditemukan saat audit fisik stok toko',
+                                                icon: AlertTriangle,
+                                            },
+                                            {
+                                                value: 'pemakaian_sendiri',
+                                                label: 'Penggunaan Operasional Toko',
+                                                description: 'Dipakai internal untuk perbaikan/servis bengkel',
+                                                icon: Store,
+                                            },
+                                            {
+                                                value: 'koreksi',
+                                                label: 'Koreksi Stok Manual',
+                                                description: 'Penyesuaian terhadap kesalahan input sebelumnya',
+                                                icon: RefreshCw,
+                                            },
+                                        ]}
+                                        icon={HelpCircle}
+                                        size="lg"
+                                        error={errors.alasan}
+                                    />
                                 </div>
                             </div>
                         </div>

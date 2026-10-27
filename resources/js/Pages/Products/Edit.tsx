@@ -3,6 +3,7 @@ import { FormEvent, useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, Calculator, Image as ImageIcon, Barcode, Tag, Layers, X, AlertCircle } from 'lucide-react';
+import { Select } from '@/Components/ui/select';
 
 interface Props {
     product: {
@@ -168,15 +169,22 @@ export default function Edit({ product, categories }: Props) {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori</label>
-                                    <select
-                                        value={data.kategori_id}
-                                        onChange={(e) => setData('kategori_id', e.target.value)}
-                                        className="w-full h-11 px-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-[#f5b800] outline-none transition-all"
-                                    >
-                                        <option value="">-- Pilih Kategori --</option>
-                                        {categories.map((c) => <option key={c.id} value={c.id}>{c.nama}</option>)}
-                                    </select>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Kategori</label>
+                                        <Link href="/categories" className="text-xs text-[#f5b800] hover:underline font-medium">+ Kelola Kategori</Link>
+                                    </div>
+                                    <Select
+                                        value={data.kategori_id ? String(data.kategori_id) : ''}
+                                        onChange={(val) => setData('kategori_id', val)}
+                                        options={[
+                                            { value: '', label: '-- Pilih Kategori --' },
+                                            ...categories.map((c) => ({ value: String(c.id), label: c.nama }))
+                                        ]}
+                                        icon={Tag}
+                                        placeholder="-- Pilih Kategori --"
+                                        searchable={categories.length > 5}
+                                        error={errors.kategori_id}
+                                    />
                                 </div>
                             </div>
 

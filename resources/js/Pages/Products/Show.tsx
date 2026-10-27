@@ -74,7 +74,7 @@ export default function Show({ product, kategori, movements, totalInBulanIni, to
         <AdminLayout>
             <Head title={`Kartu Stok - ${product.nama}`} />
 
-            <div className="max-w-7xl mx-auto space-y-6 pb-12">
+            <div className="w-full max-w-[1600px] mx-auto space-y-6 pb-12">
 
                 {/* Header Context */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -115,7 +115,7 @@ export default function Show({ product, kategori, movements, totalInBulanIni, to
                                 <ArrowLeft className="size-4 mr-2" /> Kembali
                             </Button>
                         </Link>
-                        <Link href="/stock-in/create">
+                        <Link href={`/stock-in/create?product_id=${product.id}`}>
                             <Button className="h-10 px-4 rounded-xl bg-[#f5b800] hover:bg-[#e0a800] text-gray-900 font-semibold shadow-sm">
                                 <PlusCircle className="size-4 mr-2" /> Catat Stok Masuk
                             </Button>
@@ -135,7 +135,7 @@ export default function Show({ product, kategori, movements, totalInBulanIni, to
                                 </p>
                             </div>
                         </div>
-                        <Link href="/stock-in/create" className="px-4 py-2 rounded-lg bg-white dark:bg-[#3F2B1A] text-gray-900 dark:text-[#f5b800] text-xs font-semibold hover:bg-gray-100 dark:hover:bg-[#523822] transition-colors shrink-0 text-center">
+                        <Link href={`/stock-in/create?product_id=${product.id}`} className="px-4 py-2 rounded-lg bg-white dark:bg-[#3F2B1A] text-gray-900 dark:text-[#f5b800] text-xs font-semibold hover:bg-gray-100 dark:hover:bg-[#523822] transition-colors shrink-0 text-center">
                             Buat PO Restock
                         </Link>
                     </div>

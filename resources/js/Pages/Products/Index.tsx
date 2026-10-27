@@ -5,9 +5,10 @@ import Pagination from '@/Components/Pagination';
 import {
     Plus, Upload, Download, Search, Barcode,
     Package, AlertTriangle, XCircle, FileText, Pencil, Trash2,
-    X, Info, RefreshCw, PackageOpen
+    X, Info, RefreshCw, PackageOpen, Tags, ListFilter
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
+import { Select } from '@/Components/ui/select';
 import { toast } from 'sonner';
 
 interface Product {
@@ -229,26 +230,40 @@ export default function Index({ products, categories, filters, stats }: Props) {
                                 className="w-full h-11 pl-10 pr-4 rounded-xl bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-[#f5b800] outline-none transition-all"
                             />
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <select
+                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                            <Select
                                 value={kategoriId}
-                                onChange={(e) => { setKategoriId(e.target.value); applyFilter({ kategori_id: e.target.value || undefined }); }}
-                                className="h-11 pl-3 pr-8 rounded-xl bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white text-sm appearance-none focus:ring-2 focus:ring-[#f5b800] outline-none cursor-pointer"
-                            >
-                                <option value="">Semua Kategori</option>
-                                {categories.map((c) => <option key={c.id} value={c.id}>{c.nama}</option>)}
-                            </select>
+                                onChange={(val) => {
+                                    setKategoriId(val);
+                                    applyFilter({ kategori_id: val || undefined });
+                                }}
+                                options={[
+                                    { value: '', label: 'Semua Kategori' },
+                                    ...categories.map((c) => ({ value: String(c.id), label: c.nama }))
+                                ]}
+                                icon={Tags}
+                                placeholder="Semua Kategori"
+                                fullWidth={false}
+                                className="w-full sm:w-56"
+                            />
 
-                            <select
-                                value={perPage}
-                                onChange={(e) => { const val = Number(e.target.value); setPerPage(val); applyFilter({ per_page: val }); }}
-                                className="h-11 pl-3 pr-8 rounded-xl bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white text-sm appearance-none focus:ring-2 focus:ring-[#f5b800] outline-none cursor-pointer"
-                            >
-                                <option value={10}>10 Baris</option>
-                                <option value={20}>20 Baris</option>
-                                <option value={50}>50 Baris</option>
-                                <option value={100}>100 Baris</option>
-                            </select>
+                            <Select
+                                value={String(perPage)}
+                                onChange={(val) => {
+                                    const numVal = Number(val);
+                                    setPerPage(numVal);
+                                    applyFilter({ per_page: numVal });
+                                }}
+                                options={[
+                                    { value: '10', label: '10 Baris' },
+                                    { value: '20', label: '20 Baris' },
+                                    { value: '50', label: '50 Baris' },
+                                    { value: '100', label: '100 Baris' },
+                                ]}
+                                icon={ListFilter}
+                                fullWidth={false}
+                                className="w-full sm:w-36"
+                            />
                         </div>
                     </div>
                 </div>

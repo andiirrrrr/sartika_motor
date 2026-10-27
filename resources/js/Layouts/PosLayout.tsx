@@ -1,9 +1,13 @@
 import { ReactNode, useState } from 'react';
 import { router, Link, usePage } from '@inertiajs/react';
-import { LogOut, Home, Sun, Moon, Lock, AlertTriangle, X } from 'lucide-react';
+import { LogOut, Home, Sun, Moon, Lock, AlertTriangle, X, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/Hooks/useAuth';
 import { useTheme } from '@/Hooks/useTheme';
 import { Button } from '@/Components/ui/button';
+import {
+    DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
+    DropdownMenuItem, DropdownMenuSeparator
+} from '@/Components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
 interface Props {
@@ -56,31 +60,64 @@ export default function PosLayout({ children }: Props) {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium dark:text-zinc-300">
-                        Kasir: <strong>{user?.nama}</strong>
-                    </span>
-
-                    <Button variant="ghost" size="icon" onClick={toggleTheme} title="Toggle Tema">
-                        {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger className="flex items-center gap-2 px-2.5 py-1 rounded-xl border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all cursor-pointer">
+                            <div className="w-6 h-6 rounded-full bg-[#f5b800] text-gray-950 flex items-center justify-center font-bold text-xs uppercase shadow-xs">
+                                {user?.nama.charAt(0)}
+                            </div>
+                            <span className="text-xs font-medium dark:text-zinc-200">
+                                Kasir: <strong>{user?.nama}</strong>
+                            </span>
+                            <ChevronDown className="size-3 text-gray-400" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent width="w-56" align="end" className="p-2">
+                            <div className="p-2 bg-gray-50 dark:bg-zinc-800/60 rounded-xl mb-1 text-xs border border-gray-100 dark:border-zinc-800">
+                                <div className="font-bold text-gray-900 dark:text-white truncate">{user?.nama}</div>
+                                <div className="text-[10px] text-gray-500 uppercase font-semibold">{user?.role}</div>
+                                {activeShift && (
+                                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">
+                                        Modal: Rp {formatRupiah(Number(activeShift.modal_awal))}
+                                    </div>
+                                )}
+                            </div>
+                            {isAdmin && (
+                                <DropdownMenuItem icon={Home} onClick={() => router.visit('/dashboard')}>
+                                    Kembali ke Dashboard
+                                </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem icon={theme === 'dark' ? Sun : Moon} onClick={toggleTheme}>
+                                <span>Mode Tampilan</span>
+                                <span className="ml-auto text-[10px] uppercase font-bold text-gray-400 px-1 rounded bg-gray-100 dark:bg-zinc-800">
+                                    {theme === 'dark' ? 'Gelap' : 'Terang'}
+                                </span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                destructive
+                                icon={activeShift ? Lock : LogOut}
+                                onClick={handleLogoutClick}
+                            >
+                                {activeShift ? 'Tutup Shift untuk Logout' : 'Logout Sesi'}
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
 
                     {isAdmin && (
-                        <Link href="/dashboard">
-                            <Button variant="outline" size="sm" className="h-8">
-                                <Home className="size-4 mr-2" /> Dashboard
+                        <Link href="/dashboard" className="hidden sm:inline-block">
+                            <Button variant="outline" size="sm" className="h-8 rounded-lg">
+                                <Home className="size-4 mr-1.5" /> Dashboard
                             </Button>
                         </Link>
                     )}
 
-                    {/* Tombol Logout (Disabled jika shift aktif) */}
                     <Button
                         variant={activeShift ? "secondary" : "destructive"}
                         size="sm"
                         onClick={handleLogoutClick}
-                        className={`h-8 ${activeShift ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        title={activeShift ? "Tutup shift untuk logout" : "Logout"}
+                        className={`h-8 rounded-lg text-xs ${activeShift ? 'opacity-70' : ''}`}
+                        title={activeShift ? "Tutup shift terlebih dahulu untuk logout" : "Logout"}
                     >
-                        {activeShift ? <Lock className="size-4 mr-2" /> : <LogOut className="size-4 mr-2" />} Logout
+                        {activeShift ? <Lock className="size-3.5 mr-1.5" /> : <LogOut className="size-3.5 mr-1.5" />} Logout
                     </Button>
                 </div>
             </header>

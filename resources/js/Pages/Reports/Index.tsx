@@ -1,11 +1,17 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import {
     TrendingUp, Wallet, AlertTriangle,
-    Download, BarChart3, Package, QrCode, CreditCard
+    Download, BarChart3, Package, QrCode, CreditCard,
+    Calendar, Printer, FileSpreadsheet
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
+import { Select } from '@/Components/ui/select';
+import {
+    DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
+    DropdownMenuItem
+} from '@/Components/ui/dropdown-menu';
 
 interface SalesSummary {
     date: string;
@@ -74,6 +80,39 @@ export default function Index({
     const [activeTab, setActiveTab] = useState<'sales' | 'stock'>('sales');
     const [startDate, setStartDate] = useState(from);
     const [endDate, setEndDate] = useState(to);
+    const [periodPreset, setPeriodPreset] = useState<string>('custom');
+
+    const handlePeriodChange = (val: string) => {
+        setPeriodPreset(val);
+        const now = new Date();
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const toStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+        if (val === 'today') {
+            setStartDate(toStr);
+            setEndDate(toStr);
+            router.get('/reports', { from: toStr, to: toStr }, { preserveState: true });
+        } else if (val === '7days') {
+            const d7 = new Date();
+            d7.setDate(d7.getDate() - 7);
+            const fromStr = `${d7.getFullYear()}-${pad(d7.getMonth() + 1)}-${pad(d7.getDate())}`;
+            setStartDate(fromStr);
+            setEndDate(toStr);
+            router.get('/reports', { from: fromStr, to: toStr }, { preserveState: true });
+        } else if (val === '30days') {
+            const d30 = new Date();
+            d30.setDate(d30.getDate() - 30);
+            const fromStr = `${d30.getFullYear()}-${pad(d30.getMonth() + 1)}-${pad(d30.getDate())}`;
+            setStartDate(fromStr);
+            setEndDate(toStr);
+            router.get('/reports', { from: fromStr, to: toStr }, { preserveState: true });
+        } else if (val === 'month') {
+            const fromStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+            setStartDate(fromStr);
+            setEndDate(toStr);
+            router.get('/reports', { from: fromStr, to: toStr }, { preserveState: true });
+        }
+    };
 
     const applyFilter = () => {
         router.get('/reports', { from: startDate, to: endDate }, { preserveState: true });
@@ -102,15 +141,60 @@ export default function Index({
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
+                        <Select
+                            value={periodPreset}
+                            onChange={handlePeriodChange}
+                            options={[
+                                { value: 'today', label: 'Hari Ini' },
+                                { value: '7days', label: '7 Hari Terakhir' },
+                                { value: '30days', label: '30 Hari Terakhir' },
+                                { value: 'month', label: 'Bulan Ini' },
+                                { value: 'custom', label: 'Kustom Tanggal' },
+                            ]}
+                            icon={Calendar}
+                            size="sm"
+                            fullWidth={false}
+                            className="w-44"
+                        />
+
                         <div className="flex items-center gap-2 bg-gray-50 dark:bg-zinc-800 p-1 rounded-xl border border-gray-200 dark:border-zinc-700">
-                            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-9 px-2 bg-transparent text-sm outline-none dark:text-white" />
+                            <input type="date" value={startDate} onChange={e => { setStartDate(e.target.value); setPeriodPreset('custom'); }} className="h-8 px-2 bg-transparent text-xs outline-none dark:text-white" />
                             <span className="text-gray-400">-</span>
-                            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-9 px-2 bg-transparent text-sm outline-none dark:text-white" />
-                            <Button onClick={applyFilter} size="sm" className="h-8 bg-gray-900 text-white dark:bg-white dark:text-gray-900">Terapkan</Button>
+                            <input type="date" value={endDate} onChange={e => { setEndDate(e.target.value); setPeriodPreset('custom'); }} className="h-8 px-2 bg-transparent text-xs outline-none dark:text-white" />
+                            <Button onClick={applyFilter} size="sm" className="h-8 bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-xs">Terapkan</Button>
                         </div>
-                        <Button variant="outline" className="h-11 px-4 rounded-xl shadow-sm">
-                            <Download className="size-4 mr-2" /> Ekspor
-                        </Button>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="h-10 px-4 rounded-xl shadow-xs flex items-center gap-2">
+                                    <Download className="size-4" /> Ekspor
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent width="w-44" align="end">
+                                <DropdownMenuItem icon={Printer} onClick={() => window.print()}>
+                                    Cetak / PDF
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    icon={FileSpreadsheet}
+                                    onClick={() => {
+                                        const csvRows = [
+                                            ['Tanggal', 'Omzet', 'Transaksi', 'Laba'],
+                                            ...salesSummary.map(s => [s.date, s.total_omzet, s.total_transaksi, s.total_laba])
+                                        ];
+                                        const csvContent = 'data:text/csv;charset=utf-8,' + csvRows.map(e => e.join(',')).join('\n');
+                                        const encodedUri = encodeURI(csvContent);
+                                        const link = document.createElement('a');
+                                        link.setAttribute('href', encodedUri);
+                                        link.setAttribute('download', `laporan-penjualan-${startDate}-${endDate}.csv`);
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                    }}
+                                >
+                                    Unduh CSV
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
 
@@ -357,7 +441,11 @@ export default function Index({
                                                 </td>
                                                 <td className="py-3 px-4 text-center text-gray-500">{parseFloat(p.stok_minimum)}</td>
                                                 <td className="py-3 px-4 text-right">
-                                                    <Button size="sm" className="h-8 bg-[#f5b800] text-gray-900 hover:bg-[#e0a800]">Buat PO</Button>
+                                                    <Link href={`/stock-in/create?product_id=${p.id}`}>
+                                                        <Button size="sm" className="h-8 bg-[#f5b800] text-gray-900 hover:bg-[#e0a800] font-semibold cursor-pointer shadow-xs">
+                                                            Buat PO
+                                                        </Button>
+                                                    </Link>
                                                 </td>
                                             </tr>
                                         ))}

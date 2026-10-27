@@ -6,6 +6,7 @@ import {
     Store, User as UserIcon, Save, ShieldCheck,
     Printer, Monitor, Check, X
 } from 'lucide-react';
+import { Select } from '@/Components/ui/select';
 import { toast } from 'sonner';
 
 interface Props {
@@ -26,6 +27,7 @@ export default function Index({ settings, user }: Props) {
     // State untuk Toggle (UI only)
     const [autoCut, setAutoCut] = useState(true);
     const [cashDrawer, setCashDrawer] = useState(true);
+    const [printerMode, setPrinterMode] = useState('80mm');
 
     // Form 1: Info Toko
     const storeForm = useForm({
@@ -77,7 +79,7 @@ export default function Index({ settings, user }: Props) {
         <AdminLayout>
             <Head title="Pengaturan Sistem" />
 
-            <div className="max-w-7xl mx-auto space-y-6 pb-12">
+            <div className="w-full max-w-[1600px] mx-auto space-y-6 pb-12">
 
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-2">
@@ -310,11 +312,26 @@ export default function Index({ settings, user }: Props) {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mode Printer Default</label>
-                                    <select className="w-full h-11 px-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none">
-                                        <option>Thermal Printer 80mm (USB/Bluetooth)</option>
-                                        <option>Thermal Printer 58mm</option>
-                                    </select>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Mode Printer Default</label>
+                                    <Select
+                                        value={printerMode}
+                                        onChange={setPrinterMode}
+                                        options={[
+                                            {
+                                                value: '80mm',
+                                                label: 'Thermal Printer 80mm (USB / Bluetooth)',
+                                                description: 'Ukuran standar cetak struk kasir toko (rekomendasi)',
+                                                icon: Printer,
+                                            },
+                                            {
+                                                value: '58mm',
+                                                label: 'Thermal Printer 58mm (Mini)',
+                                                description: 'Ukuran kecil / portable mobile printer',
+                                                icon: Printer,
+                                            },
+                                        ]}
+                                        icon={Printer}
+                                    />
                                 </div>
 
                                 <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-zinc-800/50 border border-gray-100 dark:border-zinc-800">

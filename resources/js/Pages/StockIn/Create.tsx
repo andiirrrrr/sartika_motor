@@ -5,8 +5,9 @@ import { Button } from '@/Components/ui/button';
 import {
     ArrowLeft, Save, Search, Package, Calendar,
     MapPin, FileText, CheckCircle2, Barcode,
-    Info
+    Info, Truck
 } from 'lucide-react';
+import { Select } from '@/Components/ui/select';
 
 interface Product {
     id: number;
@@ -24,27 +25,33 @@ interface Supplier {
 
 interface Props {
     suppliers: Supplier[];
+    initialProduct?: Product | null;
 }
 
-export default function Create({ suppliers }: Props) {
+export default function Create({ suppliers, initialProduct }: Props) {
     const { data, setData, post, processing, errors, clearErrors } = useForm({
-        product_id: '',
+        product_id: initialProduct ? initialProduct.id.toString() : '',
         supplier_id: '',
         qty: '',
-        harga_beli: '',
+        harga_beli: initialProduct ? initialProduct.harga_beli.toString() : '',
         tanggal: new Date().toISOString().split('T')[0],
-        catatan: '',
+        catatan: initialProduct ? `Restock stok menipis: ${initialProduct.nama}` : '',
     });
 
     const [search, setSearch] = useState('');
     const [results, setResults] = useState<Product[]>([]);
-    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(initialProduct || null);
     const [isSearching, setIsSearching] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const qtyInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        searchInputRef.current?.focus();
-    }, []);
+        if (initialProduct) {
+            qtyInputRef.current?.focus();
+        } else {
+            searchInputRef.current?.focus();
+        }
+    }, [initialProduct]);
 
     // Debounce Pencarian
     useEffect(() => {
@@ -158,17 +165,18 @@ export default function Create({ suppliers }: Props) {
                                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Supplier / Pemasok</label>
                                     <Link href="/suppliers" className="text-[10px] text-[#f5b800] hover:underline">+ Tambah Baru</Link>
                                 </div>
-                                <div className="relative">
-                                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-4" />
-                                    <select
-                                        value={data.supplier_id}
-                                        onChange={(e) => setData('supplier_id', e.target.value)}
-                                        className="w-full h-10 pl-9 pr-3 rounded-lg bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none appearance-none"
-                                    >
-                                        <option value="">-- Pilih Supplier (Opsional) --</option>
-                                        {suppliers.map((s) => <option key={s.id} value={s.id}>{s.nama}</option>)}
-                                    </select>
-                                </div>
+                                <Select
+                                    value={data.supplier_id ? String(data.supplier_id) : ''}
+                                    onChange={(val) => setData('supplier_id', val)}
+                                    options={[
+                                        { value: '', label: '-- Pilih Supplier (Opsional) --' },
+                                        ...suppliers.map((s) => ({ value: String(s.id), label: s.nama }))
+                                    ]}
+                                    icon={Truck}
+                                    placeholder="-- Pilih Supplier (Opsional) --"
+                                    searchable={suppliers.length > 5}
+                                    clearable={true}
+                                />
                                 {!data.supplier_id && (
                                     <p className="mt-1.5 text-[10px] text-orange-500 flex items-center gap-1">
                                         <Info className="size-3" /> Kosongkan hanya jika ini stok awal (opname).
@@ -254,6 +262,7 @@ export default function Create({ suppliers }: Props) {
                                 <div>
                                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Qty Masuk *</label>
                                     <input
+                                        ref={qtyInputRef}
                                         type="number"
                                         step="any"
                                         min="0.01"

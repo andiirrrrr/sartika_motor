@@ -5,8 +5,9 @@ import { Button } from '@/Components/ui/button';
 import {
     User as UserIcon, Mail, Lock, Eye, EyeOff, Search,
     Edit, Trash2, ShieldCheck, ShieldAlert, Check, X,
-    Download, RefreshCw, Clock, AlertTriangle
+    Download, RefreshCw, Clock, AlertTriangle, ShoppingBag, Shield
 } from 'lucide-react';
+import { Select } from '@/Components/ui/select';
 import { toast } from 'sonner';
 
 interface User {
@@ -164,8 +165,8 @@ export default function Index({ users }: Props) {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
                     {/* KIRI: FORM TAMBAH / EDIT USER */}
-                    <div className={`lg:col-span-5 rounded-xl p-6 shadow-sm border transition-colors relative overflow-hidden ${editingId ? 'bg-orange-50 dark:bg-[#2F2113] border-orange-200 dark:border-orange-900/30' : 'bg-white dark:bg-[#232019] border-gray-100 dark:border-zinc-800'}`}>
-                        <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-[#f5b800] via-yellow-200 to-gray-200"></div>
+                    <div className={`lg:col-span-5 rounded-xl p-6 shadow-sm border transition-colors relative ${editingId ? 'bg-orange-50 dark:bg-[#2F2113] border-orange-200 dark:border-orange-900/30' : 'bg-white dark:bg-[#232019] border-gray-100 dark:border-zinc-800'}`}>
+                        <div className="absolute top-0 left-0 right-0 h-1 rounded-t-xl bg-linear-to-r from-[#f5b800] via-yellow-200 to-gray-200"></div>
 
                         <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-100 dark:border-zinc-800">
                             <div>
@@ -208,10 +209,26 @@ export default function Index({ users }: Props) {
                             {/* Role */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Role / Peran *</label>
-                                <select value={data.role} onChange={e => setData('role', e.target.value)} className="w-full h-11 px-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none appearance-none">
-                                    <option value="kasir">Kasir POS (Operasional)</option>
-                                    <option value="admin">Admin (Akses Penuh)</option>
-                                </select>
+                                <Select
+                                    value={data.role}
+                                    onChange={(val) => setData('role', val)}
+                                    options={[
+                                        {
+                                            value: 'kasir',
+                                            label: 'Kasir POS (Operasional)',
+                                            description: 'Akses transaksi penjualan POS, buka & tutup shift',
+                                            icon: ShoppingBag,
+                                        },
+                                        {
+                                            value: 'admin',
+                                            label: 'Admin (Akses Penuh)',
+                                            description: 'Akses penuh inventori, katalog produk, laporan & user',
+                                            icon: ShieldCheck,
+                                        },
+                                    ]}
+                                    icon={Shield}
+                                    error={errors.role}
+                                />
                             </div>
 
                             {/* Password */}

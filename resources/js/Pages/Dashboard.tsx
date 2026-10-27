@@ -77,7 +77,7 @@ export default function Dashboard({
         <AdminLayout>
             <Head title="Dashboard - Sartika Motor" />
 
-            <div className="space-y-6 max-w-7xl mx-auto">
+            <div className="w-full max-w-[1600px] mx-auto space-y-6 pb-12">
 
                 {/* Context Header */}
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">

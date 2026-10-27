@@ -230,7 +230,7 @@ export default function Index({ paymentMethods }: Props) {
         <AdminLayout>
             <Head title="Metode Pembayaran POS" />
 
-            <div className="px-4 lg:px-6 py-6 max-w-7xl mx-auto w-full space-y-6">
+            <div className="w-full max-w-[1600px] mx-auto space-y-6 pb-12">
 
                 {/* Header Context */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">

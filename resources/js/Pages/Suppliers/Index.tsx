@@ -104,7 +104,7 @@ export default function Index({ suppliers }: Props) {
         <AdminLayout>
             <Head title="Manajemen Supplier" />
 
-            <div className="px-4 lg:px-6 py-6 max-w-[1600px] mx-auto w-full space-y-6">
+            <div className="w-full max-w-[1600px] mx-auto space-y-6 pb-12">
 
                 {/* Header Context */}
                 <div className="flex flex-wrap items-center justify-between gap-4">

@@ -4,9 +4,13 @@ import {
     LayoutDashboard, Package, Tags, Truck, ArrowDownToLine,
     ArrowUpFromLine, ShoppingCart, Receipt, BarChart3,
     Clock, Users, Settings, LogOut, Sun, Moon, Store,
-    Search, Bell, X, AlertTriangle, CreditCard
+    Search, Bell, X, AlertTriangle, CreditCard, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
+import {
+    DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
+    DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel
+} from '@/Components/ui/dropdown-menu';
 import { useAuth } from '@/Hooks/useAuth';
 import { useTheme } from '@/Hooks/useTheme';
 import { toast } from 'sonner';
@@ -200,17 +204,82 @@ export default function AdminLayout({ children }: Props) {
                             )}
                         </Link>
 
-                        <div className="flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-zinc-700">
-                            <div className="w-8 h-8 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 flex items-center justify-center font-bold text-xs uppercase">
-                                {user?.nama.charAt(0)}
-                            </div>
-                            <div className="hidden xl:block text-left">
-                                <div className="text-xs font-semibold text-gray-900 dark:text-white leading-tight">{user?.nama}</div>
-                                <div className="text-[10px] text-gray-500 uppercase leading-tight">{user?.role}</div>
-                            </div>
-                            <button onClick={handleLogoutClick} className="ml-2 text-gray-400 hover:text-red-500 transition-colors" title="Logout">
-                                <LogOut className="size-4" />
-                            </button>
+                        <div className="pl-2 border-l border-gray-200 dark:border-zinc-700">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger className="flex items-center gap-2.5 p-1.5 pl-2 rounded-xl border border-transparent hover:border-gray-200 dark:hover:border-zinc-700/80 hover:bg-gray-100/70 dark:hover:bg-zinc-800/60 transition-all cursor-pointer">
+                                    <div className="relative">
+                                        <div className="w-8 h-8 rounded-full bg-[#f5b800] text-gray-950 flex items-center justify-center font-bold text-xs uppercase shadow-xs">
+                                            {user?.nama.charAt(0)}
+                                        </div>
+                                        <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-zinc-900 ${activeShift ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
+                                    </div>
+                                    <div className="hidden xl:block text-left">
+                                        <div className="text-xs font-semibold text-gray-900 dark:text-white leading-tight">
+                                            {user?.nama}
+                                        </div>
+                                        <div className="text-[10px] text-gray-500 uppercase leading-tight font-medium tracking-wide">
+                                            {user?.role}
+                                        </div>
+                                    </div>
+                                    <ChevronDown className="size-3.5 text-gray-400 ml-0.5 transition-transform" />
+                                </DropdownMenuTrigger>
+
+                                <DropdownMenuContent width="w-64" align="end" className="p-2">
+                                    <div className="p-2.5 bg-gray-50 dark:bg-zinc-800/60 rounded-xl mb-1.5 border border-gray-100 dark:border-zinc-800">
+                                        <div className="flex items-center gap-2.5 mb-1.5">
+                                            <div className="w-9 h-9 rounded-full bg-[#f5b800] text-gray-950 flex items-center justify-center font-bold text-sm">
+                                                {user?.nama.charAt(0)}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-xs font-bold text-gray-900 dark:text-white truncate">{user?.nama}</div>
+                                                <div className="text-[10px] text-gray-500 truncate">@{user?.username}</div>
+                                            </div>
+                                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#f5b800]/20 text-amber-800 dark:text-[#f5b800] uppercase">
+                                                {user?.role}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 pt-1 text-[11px] text-gray-500">
+                                            <span className={`w-2 h-2 rounded-full ${activeShift ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}></span>
+                                            <span>{activeShift ? 'Shift POS Sedang Berjalan' : 'Belum Ada Shift Kasir'}</span>
+                                        </div>
+                                    </div>
+
+                                    <DropdownMenuLabel>Menu Cepat</DropdownMenuLabel>
+                                    <DropdownMenuItem icon={ShoppingCart} onClick={() => router.visit('/pos')}>
+                                        Buka Kasir POS
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem icon={LayoutDashboard} onClick={() => router.visit('/dashboard')}>
+                                        Dashboard Utama
+                                    </DropdownMenuItem>
+                                    {user?.role === 'admin' && (
+                                        <DropdownMenuItem icon={Settings} onClick={() => router.visit('/settings')}>
+                                            Pengaturan Sistem
+                                        </DropdownMenuItem>
+                                    )}
+
+                                    <DropdownMenuSeparator />
+
+                                    <DropdownMenuItem
+                                        icon={theme === 'dark' ? Sun : Moon}
+                                        onClick={toggleTheme}
+                                    >
+                                        <span>Mode Tampilan</span>
+                                        <span className="ml-auto text-[10px] uppercase font-bold text-gray-400 px-1.5 py-0.5 rounded bg-gray-100 dark:bg-zinc-800">
+                                            {theme === 'dark' ? 'Gelap' : 'Terang'}
+                                        </span>
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuSeparator />
+
+                                    <DropdownMenuItem
+                                        destructive
+                                        icon={LogOut}
+                                        onClick={handleLogoutClick}
+                                    >
+                                        Akhiri Sesi (Logout)
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                     </div>
                 </header>

@@ -49,7 +49,7 @@ export default function Show({ sale, app_settings }: Props) {
         <AdminLayout>
             <Head title={`Struk - ${sale.no_transaksi}`} />
 
-            <div className="max-w-7xl mx-auto pb-12">
+            <div className="w-full max-w-[1600px] mx-auto space-y-6 pb-12">
 
                 {/* Breadcrumb & Header */}
                 <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
