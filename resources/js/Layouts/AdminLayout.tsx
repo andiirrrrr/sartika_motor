@@ -1,10 +1,10 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { router, Link, usePage } from '@inertiajs/react';
 import {
     LayoutDashboard, Package, Tags, Truck, ArrowDownToLine,
     ArrowUpFromLine, ShoppingCart, Receipt, BarChart3,
     Clock, Users, Settings, LogOut, Sun, Moon, Store,
-    Search, Bell, X, AlertTriangle, CreditCard, ChevronDown
+    Search, Bell, X, AlertTriangle, CreditCard, ChevronDown, Menu
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import {
@@ -31,6 +31,14 @@ export default function AdminLayout({ children }: Props) {
         }
         return false;
     });
+
+    // Mobile drawer state
+    const [mobileOpen, setMobileOpen] = useState(false);
+
+    // Auto close mobile drawer on route navigation
+    useEffect(() => {
+        setMobileOpen(false);
+    }, [window.location.pathname]);
 
     // State Pencarian & Modal Logout
     const [globalSearch, setGlobalSearch] = useState('');
@@ -89,59 +97,81 @@ export default function AdminLayout({ children }: Props) {
     ];
 
     return (
-        <div className="flex min-h-screen bg-[#f9f9f6] dark:bg-zinc-950 transition-colors">
+        <div className="flex min-h-screen w-full bg-[#f9f9f6] dark:bg-zinc-950 transition-colors">
+            {/* MOBILE BACKDROP */}
+            {mobileOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 md:hidden animate-in fade-in duration-200"
+                    onClick={() => setMobileOpen(false)}
+                />
+            )}
+
             {/* SIDEBAR */}
-            <aside className={`fixed left-0 top-0 h-full bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 z-50 flex flex-col shadow-sm transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
-                {/* ... (Kode Sidebar tetap sama seperti milik Anda) ... */}
+            <aside className={`fixed left-0 top-0 h-full bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 z-50 flex flex-col shadow-sm transition-all duration-300 ${isCollapsed ? 'md:w-20' : 'md:w-64'} w-64 ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
                 <div className="h-16 px-4 flex items-center justify-between border-b border-gray-100 dark:border-zinc-800">
-                    {!isCollapsed && (
-                        <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden">
+                    {(!isCollapsed || mobileOpen) && (
+                        <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden" onClick={() => setMobileOpen(false)}>
                             <span className="w-2.5 h-2.5 rounded-full bg-[#f5b800] inline-block shrink-0"></span>
                             <span className="font-bold text-gray-900 dark:text-white tracking-tight whitespace-nowrap" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
                                 Sartika Motor<span className="text-[#f5b800] font-normal"> POS</span>
                             </span>
                         </Link>
                     )}
-                    <button onClick={toggleSidebar} className="text-gray-500 hover:text-gray-900 dark:hover:text-white p-1">
-                        {isCollapsed ? <LayoutDashboard className="size-5" /> : <ArrowDownToLine className="size-5 rotate-90" />}
-                    </button>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={toggleSidebar}
+                            className="hidden md:inline-flex text-gray-500 hover:text-gray-900 dark:hover:text-white p-1 rounded-lg transition-colors"
+                            title={isCollapsed ? "Buka Sidebar" : "Ciutkan Sidebar"}
+                        >
+                            {isCollapsed ? <LayoutDashboard className="size-5" /> : <ArrowDownToLine className="size-5 rotate-90" />}
+                        </button>
+                        <button
+                            onClick={() => setMobileOpen(false)}
+                            className="md:hidden text-gray-500 hover:text-gray-900 dark:hover:text-white p-1.5 rounded-lg transition-colors"
+                            title="Tutup Menu"
+                        >
+                            <X className="size-5" />
+                        </button>
+                    </div>
                 </div>
 
                 <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                    {!isCollapsed && <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-2">Navigasi Retail</div>}
+                    {(!isCollapsed || mobileOpen) && <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-2">Navigasi Retail</div>}
                     {menuItems.filter(i => !i.adminOnly || user?.role === 'admin').map((item) => (
                         <Link
                             key={item.href}
                             href={item.href}
+                            onClick={() => setMobileOpen(false)}
                             title={isCollapsed ? item.label : undefined}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${window.location.pathname.startsWith(item.href)
                                 ? 'bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white font-medium'
                                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50'
-                                } ${isCollapsed ? 'justify-center' : ''}`}
+                                } ${isCollapsed && !mobileOpen ? 'md:justify-center' : ''}`}
                         >
                             <item.icon className="size-5 shrink-0" />
-                            {!isCollapsed && <span className="text-sm">{item.label}</span>}
+                            {(!isCollapsed || mobileOpen) && <span className="text-sm">{item.label}</span>}
                         </Link>
                     ))}
 
-                    {!isCollapsed && <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mt-6 mb-2">Konfigurasi</div>}
+                    {(!isCollapsed || mobileOpen) && <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mt-6 mb-2">Konfigurasi</div>}
                     {configItems.filter(i => !i.adminOnly || user?.role === 'admin').map((item) => (
                         <Link
                             key={item.href}
                             href={item.href}
+                            onClick={() => setMobileOpen(false)}
                             title={isCollapsed ? item.label : undefined}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${window.location.pathname.startsWith(item.href)
                                 ? 'bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white font-medium'
                                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50'
-                                } ${isCollapsed ? 'justify-center' : ''}`}
+                                } ${isCollapsed && !mobileOpen ? 'md:justify-center' : ''}`}
                         >
                             <item.icon className="size-5 shrink-0" />
-                            {!isCollapsed && <span className="text-sm">{item.label}</span>}
+                            {(!isCollapsed || mobileOpen) && <span className="text-sm">{item.label}</span>}
                         </Link>
                     ))}
                 </nav>
 
-                {!isCollapsed && (
+                {(!isCollapsed || mobileOpen) && (
                     <div className="p-4 border-t border-gray-100 dark:border-zinc-800">
                         <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3">
                             <div className="flex items-center gap-2 mb-1">
@@ -156,18 +186,25 @@ export default function AdminLayout({ children }: Props) {
             </aside>
 
             {/* MAIN CONTENT AREA */}
-            <div className={`flex-1 flex flex-col transition-all duration-300 ${isCollapsed ? 'pl-20' : 'pl-64'}`}>
+            <div className={`flex-1 flex flex-col min-w-0 w-full transition-all duration-300 ${isCollapsed ? 'md:pl-20' : 'md:pl-64'} pl-0`}>
                 {/* HEADER */}
-                <header className="fixed top-0 right-0 h-16 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md z-40 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between px-6 transition-all duration-300" style={{ left: isCollapsed ? '5rem' : '16rem' }}>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Store className="size-4" />
-                        <span>Toko Utama</span>
-                        <span className="text-gray-300">/</span>
-                        <span className="font-semibold text-gray-900 dark:text-white">Sartika Motor</span>
+                <header className="sticky top-0 z-30 h-16 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between px-4 sm:px-6 w-full shrink-0">
+                    <div className="flex items-center gap-2 text-sm text-gray-500 min-w-0">
+                        <button
+                            onClick={() => setMobileOpen(true)}
+                            className="md:hidden p-2 -ml-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                            title="Buka Menu"
+                        >
+                            <Menu className="size-5" />
+                        </button>
+                        <Store className="size-4 shrink-0 hidden sm:block" />
+                        <span className="hidden sm:inline truncate">Toko Utama</span>
+                        <span className="text-gray-300 hidden sm:inline">/</span>
+                        <span className="font-semibold text-gray-900 dark:text-white truncate">Sartika Motor</span>
                     </div>
 
                     {/* SEARCH BAR YANG BERFUNGSI */}
-                    <div className="flex-1 max-w-md mx-6 hidden md:block">
+                    <div className="flex-1 max-w-md mx-6 hidden xl:block">
                         <div className="relative flex items-center">
                             <Search className="absolute left-3 text-gray-400 size-4" />
                             <input
@@ -181,7 +218,7 @@ export default function AdminLayout({ children }: Props) {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                         <Link href="/pos" className="hidden sm:flex items-center gap-2 h-9 px-4 rounded-xl bg-[#f5b800] text-gray-900 text-sm font-medium hover:bg-[#e0a800] transition-colors">
                             <ShoppingCart className="size-4" /> Buka POS
                         </Link>
@@ -285,7 +322,7 @@ export default function AdminLayout({ children }: Props) {
                 </header>
 
                 {/* PAGE CONTENT */}
-                <main className="flex-1 pt-20 pb-8 px-4 sm:px-6">
+                <main className="flex-1 min-w-0 w-full py-6 px-4 sm:px-6">
                     {children}
                 </main>
             </div>

@@ -25,6 +25,8 @@ class SaleController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('no_transaksi', 'like', "%{$search}%")
+                    ->orWhere('nama_pelanggan', 'like', "%{$search}%")
+                    ->orWhere('no_wa', 'like', "%{$search}%")
                     ->orWhereHas('kasir', function ($q) use ($search) {
                         $q->where('nama', 'like', "%{$search}%");
                     });
@@ -50,9 +52,9 @@ class SaleController extends Controller
                 'search' => $search,
             ],
             'stats' => [
-                'omzet' => $totalOmzet,
-                'transaksi' => $totalTransaksi,
-                'aov' => $aov,
+                'omzet' => (float) $totalOmzet,
+                'transaksi' => (int) $totalTransaksi,
+                'aov' => (float) $aov,
             ],
         ]);
     }

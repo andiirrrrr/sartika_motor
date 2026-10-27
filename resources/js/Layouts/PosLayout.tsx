@@ -47,7 +47,7 @@ export default function PosLayout({ children }: Props) {
     };
 
     return (
-        <div className="flex h-screen flex-col bg-gray-100 dark:bg-zinc-900 transition-colors">
+        <div className="flex h-screen w-full max-w-[100vw] overflow-x-hidden flex-col bg-gray-100 dark:bg-zinc-900 transition-colors">
             {/* Topbar POS */}
             <header className="flex h-12 shrink-0 items-center justify-between border-b bg-white px-4 dark:bg-zinc-950 dark:border-zinc-800">
                 <div className="flex items-center gap-4">

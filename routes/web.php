@@ -144,10 +144,10 @@ Route::middleware('auth')->group(function () {
 
         return Inertia::render('Dashboard', [
             'stats' => [
-                'omzet' => $omzet,
-                'transaksi' => $transaksi,
-                'produk' => $totalProduk,
-                'stok_kritis' => $stokMenipis,
+                'omzet' => (float) $omzet,
+                'transaksi' => (int) $transaksi,
+                'produk' => (int) $totalProduk,
+                'stok_kritis' => (int) $stokMenipis,
                 'growth' => $growth,
             ],
             'recentSales' => $recentSales,
@@ -179,6 +179,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/products/import', [ProductController::class, 'import'])->name('products.import');
         Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
+        Route::post('/products/bulk-delete', [ProductController::class, 'bulkDestroy'])->name('products.bulk-destroy');
 
         Route::get('/stock-in', [StockInController::class, 'index'])->name('stock-in.index');
         Route::get('/stock-in/create', [StockInController::class, 'create'])->name('stock-in.create');
@@ -192,6 +193,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
         Route::put('/categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
         Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+        Route::post('/categories/bulk-delete', [CategoryController::class, 'bulkDestroy'])->name('categories.bulk-destroy');
         // shift
         Route::get('/shifts', [ShiftController::class, 'index'])->name('shifts.index');
         // Manajemen User
@@ -212,6 +214,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
         Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
         Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('suppliers.destroy');
+        Route::post('/suppliers/bulk-delete', [SupplierController::class, 'bulkDestroy'])->name('suppliers.bulk-destroy');
 
         // Metode Pembayaran
         Route::get('/payment-methods', [PaymentMethodController::class, 'index'])->name('payment-methods.index');

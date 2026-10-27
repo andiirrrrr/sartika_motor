@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ProductsExport;
+use App\Imports\ProductsImport;
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\ProductsExport;
-use App\Imports\ProductsImport;
 
 class ProductController extends Controller
 {
@@ -61,7 +62,7 @@ class ProductController extends Controller
                 'total_sku' => $totalSku,
                 'low_stock' => $lowStock,
                 'out_of_stock' => $outOfStock,
-            ]
+            ],
         ]);
     }
 
@@ -108,8 +109,8 @@ class ProductController extends Controller
             ]);
 
             // Jika stok awal diisi, otomatis buat catatan stok masuk
-            if (!empty($validated['stok_awal']) && $validated['stok_awal'] > 0) {
-                $stockService = app(\App\Services\StockService::class);
+            if (! empty($validated['stok_awal']) && $validated['stok_awal'] > 0) {
+                $stockService = app(StockService::class);
                 $stockService->stockIn([
                     'product_id' => $product->id,
                     'qty' => $validated['stok_awal'],
@@ -127,8 +128,8 @@ class ProductController extends Controller
     {
         return Inertia::render('Products/Edit', [
             'product' => $product->only(
-                'id', 'kode_barang', 'nama', 'gambar', 'kategori_id', 'satuan', 
-                'harga_beli', 'harga_jual', 'harga_grosir', 'min_qty_grosir', 
+                'id', 'kode_barang', 'nama', 'gambar', 'kategori_id', 'satuan',
+                'harga_beli', 'harga_jual', 'harga_grosir', 'min_qty_grosir',
                 'stok_minimum', 'aktif'
             ),
             'categories' => Category::orderBy('nama')->get(['id', 'nama']),
@@ -138,7 +139,7 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         $validated = $request->validate([
-            'kode_barang' => 'required|string|max:50|unique:products,kode_barang,' . $product->id,
+            'kode_barang' => 'required|string|max:50|unique:products,kode_barang,'.$product->id,
             'nama' => 'required|string|max:150',
             'kategori_id' => 'nullable|exists:categories,id',
             'satuan' => 'required|string|max:20',
@@ -192,7 +193,7 @@ class ProductController extends Controller
 
         return Inertia::render('Products/Show', [
             'product' => $product->only(
-                'id', 'kode_barang', 'nama', 'satuan', 'stok', 
+                'id', 'kode_barang', 'nama', 'satuan', 'stok',
                 'harga_beli', 'harga_jual', 'stok_minimum'
             ),
             'kategori' => $product->kategori?->nama,
@@ -218,8 +219,8 @@ class ProductController extends Controller
         $products = $query->orderByDesc('id')
             ->limit(50)
             ->get([
-                'id', 'kode_barang', 'nama', 'gambar', 'stok', 'satuan', 
-                'harga_beli', 'harga_jual', 'harga_grosir', 'min_qty_grosir'
+                'id', 'kode_barang', 'nama', 'gambar', 'stok', 'satuan',
+                'harga_beli', 'harga_jual', 'harga_grosir', 'min_qty_grosir',
             ]);
 
         return response()->json($products);
@@ -227,7 +228,7 @@ class ProductController extends Controller
 
     public function export()
     {
-        return Excel::download(new ProductsExport, 'data-produk-' . date('Y-m-d') . '.xlsx');
+        return Excel::download(new ProductsExport, 'data-produk-'.date('Y-m-d').'.xlsx');
     }
 
     public function import(Request $request)
@@ -238,33 +239,34 @@ class ProductController extends Controller
 
         try {
             Excel::import(new ProductsImport(auth()->id()), $request->file('file'));
+
             return back()->with('success', 'Data produk berhasil diimport!');
         } catch (\Exception $e) {
-            return back()->with('error', 'Terjadi kesalahan saat import: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan saat import: '.$e->getMessage());
         }
     }
 
     private function uploadAndConvertToWebp($file)
     {
         // 1. Buat nama file unik
-        $filename = time() . '_' . uniqid() . '.webp';
-        $path = 'products/' . $filename;
+        $filename = time().'_'.uniqid().'.webp';
+        $path = 'products/'.$filename;
 
         // 2. Ambil konten gambar asli
         $imageContent = file_get_contents($file->getRealPath());
         $image = imagecreatefromstring($imageContent);
 
-        if (!$image) {
+        if (! $image) {
             throw new \Exception('Format gambar tidak didukung.');
         }
 
         // 3. Konversi dan simpan sebagai WebP (kualitas 80%)
-        $storagePath = storage_path('app/public/' . $path);
+        $storagePath = storage_path('app/public/'.$path);
         // Pastikan folder ada
-        if (!file_exists(dirname($storagePath))) {
+        if (! file_exists(dirname($storagePath))) {
             mkdir(dirname($storagePath), 0755, true);
         }
-        
+
         imagewebp($image, $storagePath, 80);
         imagedestroy($image);
 
@@ -287,6 +289,42 @@ class ProductController extends Controller
 
         } catch (\Exception $e) {
             return back()->with('error', 'Terjadi kesalahan saat menghapus produk.');
+        }
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:products,id',
+        ]);
+
+        $ids = $validated['ids'];
+        $deletedCount = 0;
+        $skippedCount = 0;
+
+        foreach ($ids as $id) {
+            $product = Product::find($id);
+            if (! $product) {
+                continue;
+            }
+
+            if ($product->saleItems()->exists() || $product->stockMovements()->exists()) {
+                $skippedCount++;
+
+                continue;
+            }
+
+            $product->delete();
+            $deletedCount++;
+        }
+
+        if ($deletedCount > 0 && $skippedCount === 0) {
+            return back()->with('success', "{$deletedCount} produk berhasil dihapus permanen.");
+        } elseif ($deletedCount > 0 && $skippedCount > 0) {
+            return back()->with('warning', "{$deletedCount} produk berhasil dihapus. {$skippedCount} produk dilewati karena memiliki riwayat transaksi/stok.");
+        } else {
+            return back()->with('error', 'Semua produk yang dipilih tidak dapat dihapus karena sudah memiliki riwayat transaksi/stok.');
         }
     }
 }

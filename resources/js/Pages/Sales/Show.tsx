@@ -22,6 +22,8 @@ interface Props {
         } | null;
         bayar: number;
         kembalian: number;
+        nama_pelanggan?: string | null;
+        no_wa?: string | null;
         kasir: { nama: string };
         items: any[];
     };
@@ -43,6 +45,54 @@ export default function Show({ sale, app_settings }: Props) {
             case 'transfer': return <CreditCard className="size-5 text-purple-600" />;
             default: return <FileText className="size-5" />;
         }
+    };
+
+    const handleSendWhatsApp = () => {
+        if (!sale.no_wa) return;
+
+        let cleanPhone = sale.no_wa.replace(/\D/g, '');
+        if (cleanPhone.startsWith('0')) {
+            cleanPhone = '62' + cleanPhone.slice(1);
+        } else if (cleanPhone.startsWith('8')) {
+            cleanPhone = '62' + cleanPhone;
+        }
+
+        const waktu = new Date(sale.tanggal).toLocaleString('id-ID', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+
+        const itemsList = (sale.items || []).map((item: any, idx: number) => {
+            return `${idx + 1}. *${item.nama_produk}*\n   ${item.qty} x Rp ${formatRupiah(item.harga_jual)} = Rp ${formatRupiah(item.subtotal)}`;
+        }).join('\n');
+
+        const storeName = app_settings?.store_name || 'SARTIKA MOTOR';
+        const storeAddress = app_settings?.store_address || '';
+        const storePhone = app_settings?.store_phone || '';
+
+        const message =
+            `*STRUK PEMBELIAN DIGITAL*
+*${storeName.toUpperCase()}*
+${storeAddress ? storeAddress + '\n' : ''}${storePhone ? 'Telp: ' + storePhone + '\n' : ''}------------------------------------------
+No. Struk : *${sale.no_transaksi}*
+Waktu     : ${waktu}
+Kasir     : ${sale.kasir?.nama || 'Kasir'}
+Pelanggan : *${sale.nama_pelanggan || 'Pelanggan Umum'}*
+------------------------------------------
+*DAFTAR BELANJA:*
+${itemsList}
+------------------------------------------
+*TOTAL AKHIR : Rp ${formatRupiah(sale.total)}*
+Bayar (${sale.payment_method?.nama || sale.metode_bayar}) : Rp ${formatRupiah(sale.bayar)}
+Kembali : Rp ${formatRupiah(sale.kembalian)}
+------------------------------------------
+_${app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kami!'}_`;
+
+        const encodedText = encodeURIComponent(message);
+        window.open(`https://wa.me/${cleanPhone}?text=${encodedText}`, '_blank');
     };
 
     return (
@@ -80,6 +130,11 @@ export default function Show({ sale, app_settings }: Props) {
                         <Button onClick={() => window.print()} className="h-10 px-5 rounded-xl bg-[#f5b800] hover:bg-[#e0a800] text-gray-900 font-bold shadow-sm">
                             <Printer className="size-4 mr-2" /> Cetak Ulang Struk
                         </Button>
+                        {sale.no_wa && (
+                            <Button onClick={handleSendWhatsApp} className="h-10 px-4 rounded-xl bg-green-600 hover:bg-green-700 text-white font-medium shadow-sm">
+                                <QrCode className="size-4 mr-2" /> Kirim WA E-Struk
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -132,6 +187,10 @@ export default function Show({ sale, app_settings }: Props) {
                                     <div className="flex justify-between items-center">
                                         <span className="text-gray-500">Kasir</span>
                                         <span>{sale.kasir?.nama}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-gray-500">Pelanggan</span>
+                                        <span className="font-semibold">{sale.nama_pelanggan || 'Pelanggan Umum'}</span>
                                     </div>
                                 </div>
 
@@ -266,8 +325,11 @@ export default function Show({ sale, app_settings }: Props) {
                                     <span className="font-medium text-gray-900 dark:text-white text-right">{new Date(sale.tanggal).toLocaleString('id-ID')}</span>
                                 </div>
                                 <div className="flex items-start justify-between gap-2">
-                                    <span className="text-gray-500 flex items-center gap-2"><User className="size-4" /> Operator</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">{sale.kasir?.nama}</span>
+                                    <span className="text-gray-500 flex items-center gap-2"><User className="size-4" /> Pelanggan</span>
+                                    <span className="font-medium text-gray-900 dark:text-white text-right">
+                                        {sale.nama_pelanggan || 'Pelanggan Umum'}
+                                        {sale.no_wa && <span className="block text-xs text-green-600 dark:text-green-400 font-mono">{sale.no_wa}</span>}
+                                    </span>
                                 </div>
                                 <div className="flex items-start justify-between gap-2">
                                     <span className="text-gray-500 flex items-center gap-2"><Store className="size-4" /> Mesin POS</span>

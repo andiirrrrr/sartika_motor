@@ -69,7 +69,7 @@ export default function Index({ shifts, stats }: Props) {
         <AdminLayout>
             <Head title="Riwayat Shift Kasir" />
 
-            <div className="max-w-[1600px] mx-auto space-y-6 pb-12">
+            <div className="w-full max-w-[1600px] mx-auto min-w-0 space-y-6 pb-12">
 
                 {/* Header & Actions */}
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -153,7 +153,7 @@ export default function Index({ shifts, stats }: Props) {
                 </div>
 
                 {/* Tabel Riwayat Shift */}
-                <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+                <div className="w-full max-w-full bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden flex flex-col">
                     <div className="p-5 border-b border-gray-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                             <h2 className="text-lg font-bold text-gray-900 dark:text-white">Rekapitulasi Sesi Kasir</h2>
@@ -252,7 +252,7 @@ export default function Index({ shifts, stats }: Props) {
                                     <Printer className="size-5" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Laporan Tutup Shift (Z)</h3>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Laporan Tutup</h3>
                                     <p className="text-xs text-gray-500">ID: SFT-{selectedShift.id.toString().padStart(5, '0')}</p>
                                 </div>
                             </div>
@@ -337,9 +337,6 @@ export default function Index({ shifts, stats }: Props) {
 
                         <div className="p-4 bg-gray-50 dark:bg-[#1C1A14] border-t border-gray-100 dark:border-zinc-800 flex justify-end gap-2">
                             <Button variant="outline" onClick={() => setShowZReport(false)}>Tutup</Button>
-                            <Button className="bg-[#f5b800] text-gray-900" onClick={() => window.print()}>
-                                <Printer className="size-4 mr-2" /> Cetak Laporan
-                            </Button>
                         </div>
                     </div>
                 </div>

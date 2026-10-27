@@ -25,18 +25,20 @@ class SupplierController extends Controller
         ]);
 
         Supplier::create($validated);
+
         return back()->with('success', 'Supplier berhasil ditambahkan.');
     }
 
     public function update(Request $request, Supplier $supplier)
     {
         $validated = $request->validate([
-            'nama' => 'required|string|max:150|unique:suppliers,nama,' . $supplier->id,
+            'nama' => 'required|string|max:150|unique:suppliers,nama,'.$supplier->id,
             'telepon' => 'nullable|string|max:20',
             'alamat' => 'nullable|string',
         ]);
 
         $supplier->update($validated);
+
         return back()->with('success', 'Supplier berhasil diperbarui.');
     }
 
@@ -48,6 +50,43 @@ class SupplierController extends Controller
         }
 
         $supplier->delete();
+
         return back()->with('success', 'Supplier berhasil dihapus.');
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:suppliers,id',
+        ]);
+
+        $ids = $validated['ids'];
+        $deletedCount = 0;
+        $skippedCount = 0;
+
+        foreach ($ids as $id) {
+            $supplier = Supplier::find($id);
+            if (! $supplier) {
+                continue;
+            }
+
+            if ($supplier->stockIns()->exists()) {
+                $skippedCount++;
+
+                continue;
+            }
+
+            $supplier->delete();
+            $deletedCount++;
+        }
+
+        if ($deletedCount > 0 && $skippedCount === 0) {
+            return back()->with('success', "{$deletedCount} supplier berhasil dihapus.");
+        } elseif ($deletedCount > 0 && $skippedCount > 0) {
+            return back()->with('warning', "{$deletedCount} supplier berhasil dihapus. {$skippedCount} supplier dilewati karena memiliki riwayat transaksi stok masuk.");
+        } else {
+            return back()->with('error', 'Semua supplier yang dipilih tidak dapat dihapus karena memiliki riwayat stok masuk.');
+        }
     }
 }

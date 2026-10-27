@@ -19,6 +19,8 @@ class Sale extends Model
         'metode_bayar',
         'bayar',
         'kembalian',
+        'nama_pelanggan',
+        'no_wa',
         'kasir_id',
         'shift_id',
         'payment_method_id',

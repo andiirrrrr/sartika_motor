@@ -35,7 +35,7 @@ class CategoryController extends Controller
     public function update(Request $request, Category $category)
     {
         $validated = $request->validate([
-            'nama' => 'required|string|max:100|unique:categories,nama,' . $category->id,
+            'nama' => 'required|string|max:100|unique:categories,nama,'.$category->id,
         ]);
 
         $category->update($validated);
@@ -45,8 +45,48 @@ class CategoryController extends Controller
 
     public function destroy(Category $category)
     {
+        if ($category->products()->exists()) {
+            return back()->with('error', 'Gagal menghapus. Kategori ini masih memiliki produk terkait.');
+        }
+
         $category->delete();
 
         return back()->with('success', 'Kategori berhasil dihapus.');
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:categories,id',
+        ]);
+
+        $ids = $validated['ids'];
+        $deletedCount = 0;
+        $skippedCount = 0;
+
+        foreach ($ids as $id) {
+            $category = Category::find($id);
+            if (! $category) {
+                continue;
+            }
+
+            if ($category->products()->exists()) {
+                $skippedCount++;
+
+                continue;
+            }
+
+            $category->delete();
+            $deletedCount++;
+        }
+
+        if ($deletedCount > 0 && $skippedCount === 0) {
+            return back()->with('success', "{$deletedCount} kategori berhasil dihapus.");
+        } elseif ($deletedCount > 0 && $skippedCount > 0) {
+            return back()->with('warning', "{$deletedCount} kategori berhasil dihapus. {$skippedCount} kategori dilewati karena masih memiliki produk terkait.");
+        } else {
+            return back()->with('error', 'Semua kategori yang dipilih tidak dapat dihapus karena masih memiliki produk terkait.');
+        }
     }
 }

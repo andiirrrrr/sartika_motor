@@ -115,6 +115,8 @@ class SaleService
                 'payment_method_id' => $data['payment_method_id'] ?? null,
                 'bayar' => $bayar,
                 'kembalian' => $kembalian,
+                'nama_pelanggan' => ! empty($data['nama_pelanggan']) ? trim($data['nama_pelanggan']) : null,
+                'no_wa' => ! empty($data['no_wa']) ? trim($data['no_wa']) : null,
                 'kasir_id' => $kasirId,
                 'shift_id' => $data['shift_id'] ?? null,
             ]);

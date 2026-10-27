@@ -33,6 +33,11 @@ export default function Index({ categories }: Props) {
     });
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // Selection & Bulk Action State
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
     // Handler Submit (Tambah / Edit)
     const submit = (e: FormEvent) => {
         e.preventDefault();
@@ -99,6 +104,33 @@ export default function Index({ categories }: Props) {
     const filteredCategories = categories.filter(c =>
         c.nama.toLowerCase().includes(search.toLowerCase())
     );
+
+    const isAllSelected = filteredCategories.length > 0 && filteredCategories.every(c => selectedIds.includes(c.id));
+
+    const toggleSelectAll = () => {
+        if (isAllSelected) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(filteredCategories.map(c => c.id));
+        }
+    };
+
+    const toggleSelectOne = (id: number) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedIds.length === 0) return;
+        setIsBulkDeleting(true);
+        router.post('/categories/bulk-delete', { ids: selectedIds }, {
+            onSuccess: () => {
+                setSelectedIds([]);
+                setBulkDeleteModal(false);
+            },
+            onFinish: () => setIsBulkDeleting(false),
+            preserveScroll: true,
+        });
+    };
 
     return (
         <AdminLayout>
@@ -219,14 +251,51 @@ export default function Index({ categories }: Props) {
                             </div>
                         </div>
 
+                        {/* Bulk Action Bar */}
+                        {selectedIds.length > 0 && (
+                            <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[#f5b800]/10 border border-[#f5b800]/30 rounded-xl animate-in fade-in slide-in-from-top-2 duration-150">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-[#f5b800] animate-pulse"></span>
+                                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                                        {selectedIds.length} kategori dipilih
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setSelectedIds([])}
+                                        className="h-8 text-xs font-medium"
+                                    >
+                                        Batal
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() => setBulkDeleteModal(true)}
+                                        className="h-8 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white shadow-sm flex items-center gap-1.5"
+                                    >
+                                        <Trash2 className="size-3.5" />
+                                        Hapus Terpilih ({selectedIds.length})
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Tabel */}
-                        <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden">
-                            <div className="overflow-x-auto">
+                        <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden w-full max-w-full">
+                            <div className="w-full overflow-x-auto">
                                 <table className="w-full text-left">
                                     <thead>
                                         <tr className="bg-gray-50 dark:bg-[#1C1A14] text-[10px] uppercase tracking-wider text-gray-500">
                                             <th className="py-3 pl-5 pr-2 w-10">
-                                                <input type="checkbox" className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer" />
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isAllSelected}
+                                                    onChange={toggleSelectAll}
+                                                    className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer"
+                                                />
                                             </th>
                                             <th className="py-3 px-4 font-semibold">Nama Kategori</th>
                                             <th className="py-3 px-4 font-semibold text-center">Total Produk</th>
@@ -242,43 +311,54 @@ export default function Index({ categories }: Props) {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            filteredCategories.map((c) => (
-                                                <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-[#2B271F] transition-colors group">
-                                                    <td className="py-3 pl-5 pr-2 align-middle">
-                                                        <input type="checkbox" className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer" />
-                                                    </td>
-                                                    <td className="py-3 px-4 align-middle">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-lg bg-[#f5b800]/10 flex items-center justify-center shrink-0">
-                                                                <Tags className="size-4 text-[#f5b800]" />
+                                            filteredCategories.map((c) => {
+                                                const isChecked = selectedIds.includes(c.id);
+                                                return (
+                                                    <tr
+                                                        key={c.id}
+                                                        className={`transition-colors group ${isChecked ? 'bg-[#f5b800]/5 dark:bg-[#f5b800]/10' : 'hover:bg-gray-50 dark:hover:bg-[#2B271F]'}`}
+                                                    >
+                                                        <td className="py-3 pl-5 pr-2 align-middle">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isChecked}
+                                                                onChange={() => toggleSelectOne(c.id)}
+                                                                className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer"
+                                                            />
+                                                        </td>
+                                                        <td className="py-3 px-4 align-middle">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-lg bg-[#f5b800]/10 flex items-center justify-center shrink-0">
+                                                                    <Tags className="size-4 text-[#f5b800]" />
+                                                                </div>
+                                                                <div>
+                                                                    <span className="font-semibold text-sm text-gray-900 dark:text-white group-hover:text-[#f5b800] transition-colors">{c.nama}</span>
+                                                                </div>
                                                             </div>
-                                                            <div>
-                                                                <span className="font-semibold text-sm text-gray-900 dark:text-white group-hover:text-[#f5b800] transition-colors">{c.nama}</span>
+                                                        </td>
+                                                        <td className="py-3 px-4 align-middle text-center">
+                                                            <span className="inline-block px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 text-xs font-semibold">
+                                                                {c.products_count} Produk
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-4 align-middle text-center">
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-[10px] font-bold">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Aktif
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 pr-5 pl-2 align-middle text-right">
+                                                            <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                                                                <button onClick={() => startEdit(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="Edit">
+                                                                    <Pencil className="size-4" />
+                                                                </button>
+                                                                <button onClick={() => confirmDelete(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Hapus">
+                                                                    <Trash2 className="size-4" />
+                                                                </button>
                                                             </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-3 px-4 align-middle text-center">
-                                                        <span className="inline-block px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 text-xs font-semibold">
-                                                            {c.products_count} Produk
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3 px-4 align-middle text-center">
-                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-[10px] font-bold">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Aktif
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3 pr-5 pl-2 align-middle text-right">
-                                                        <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={() => startEdit(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="Edit">
-                                                                <Pencil className="size-4" />
-                                                            </button>
-                                                            <button onClick={() => confirmDelete(c)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Hapus">
-                                                                <Trash2 className="size-4" />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
                                         )}
                                     </tbody>
                                 </table>
@@ -312,6 +392,52 @@ export default function Index({ categories }: Props) {
                             </Button>
                             <Button onClick={executeDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700 text-white">
                                 {isDeleting ? 'Menghapus...' : 'Ya, Hapus'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL KONFIRMASI BULK DELETE */}
+            {bulkDeleteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
+                    <div className="bg-white dark:bg-zinc-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-zinc-800 space-y-4 animate-in zoom-in-95 duration-150">
+                        <div className="flex items-center justify-between">
+                            <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 flex items-center justify-center">
+                                <Trash2 className="size-6" />
+                            </div>
+                            <button
+                                onClick={() => setBulkDeleteModal(false)}
+                                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                            >
+                                <X className="size-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-2">
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                                Hapus {selectedIds.length} Kategori Terpilih?
+                            </h2>
+                            <p className="text-sm text-gray-500 leading-relaxed">
+                                Apakah Anda yakin ingin menghapus <strong className="text-gray-900 dark:text-white">{selectedIds.length} kategori</strong> yang dipilih? Kategori yang masih digunakan oleh produk akan otomatis dilewati demi keamanan katalog.
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-3 pt-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setBulkDeleteModal(false)}
+                                disabled={isBulkDeleting}
+                                className="flex-1 h-11 rounded-xl"
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                onClick={handleBulkDelete}
+                                disabled={isBulkDeleting}
+                                className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-sm"
+                            >
+                                {isBulkDeleting ? 'Menghapus...' : 'Ya, Hapus'}
                             </Button>
                         </div>
                     </div>

@@ -27,6 +27,11 @@ export default function Index({ suppliers }: Props) {
     });
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // Selection & Bulk Action State
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         nama: '',
         telepon: '',
@@ -91,6 +96,58 @@ export default function Index({ suppliers }: Props) {
         s.nama.toLowerCase().includes(search.toLowerCase()) ||
         (s.telepon && s.telepon.includes(search))
     );
+
+    const isAllSelected = filteredSuppliers.length > 0 && filteredSuppliers.every(s => selectedIds.includes(s.id));
+
+    const toggleSelectAll = () => {
+        if (isAllSelected) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(filteredSuppliers.map(s => s.id));
+        }
+    };
+
+    const toggleSelectOne = (id: number) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedIds.length === 0) return;
+        setIsBulkDeleting(true);
+        router.post('/suppliers/bulk-delete', { ids: selectedIds }, {
+            onSuccess: () => {
+                setSelectedIds([]);
+                setBulkDeleteModal(false);
+            },
+            onFinish: () => setIsBulkDeleting(false),
+            preserveScroll: true,
+        });
+    };
+
+    const handleExportSelected = () => {
+        const selectedSuppliers = suppliers.filter(s => selectedIds.includes(s.id));
+        if (selectedSuppliers.length === 0) return;
+
+        const headers = ['ID', 'Nama Supplier', 'Telepon', 'Alamat'];
+        const rows = selectedSuppliers.map(s => [
+            `SUP-${s.id.toString().padStart(3, '0')}`,
+            `"${s.nama.replace(/"/g, '""')}"`,
+            `"${s.telepon || '-'}"`,
+            `"${(s.alamat || '-').replace(/"/g, '""')}"`
+        ]);
+
+        const csvContent = 'data:text/csv;charset=utf-8,\uFEFF'
+            + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `supplier_terpilih_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success(`${selectedSuppliers.length} supplier berhasil diekspor`);
+    };
 
     // Format WA Link
     const getWhatsAppLink = (phone: string | null) => {
@@ -249,8 +306,50 @@ export default function Index({ suppliers }: Props) {
                             </div>
                         </div>
 
+                        {/* Bulk Action Bar */}
+                        {selectedIds.length > 0 && (
+                            <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[#f5b800]/10 border border-[#f5b800]/30 rounded-xl animate-in fade-in slide-in-from-top-2 duration-150">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-[#f5b800] animate-pulse"></span>
+                                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                                        {selectedIds.length} supplier dipilih
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setSelectedIds([])}
+                                        className="h-8 text-xs font-medium"
+                                    >
+                                        Batal
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleExportSelected}
+                                        className="h-8 text-xs font-semibold flex items-center gap-1.5"
+                                    >
+                                        <Download className="size-3.5" />
+                                        Ekspor Terpilih
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() => setBulkDeleteModal(true)}
+                                        className="h-8 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white shadow-sm flex items-center gap-1.5"
+                                    >
+                                        <Trash2 className="size-3.5" />
+                                        Hapus Terpilih ({selectedIds.length})
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Tabel Supplier */}
-                        <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden flex flex-col">
+                        <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden flex flex-col w-full max-w-full">
 
                             {/* Table Header & Search */}
                             <div className="p-5 border-b border-gray-100 dark:border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -279,7 +378,12 @@ export default function Index({ suppliers }: Props) {
                                     <thead>
                                         <tr className="bg-gray-50 dark:bg-[#1C1A14] text-[10px] uppercase tracking-wider text-gray-500">
                                             <th className="py-3 px-5 font-semibold w-10">
-                                                <input type="checkbox" className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer" />
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isAllSelected}
+                                                    onChange={toggleSelectAll}
+                                                    className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer"
+                                                />
                                             </th>
                                             <th className="py-3 px-4 font-semibold">Nama Supplier</th>
                                             <th className="py-3 px-4 font-semibold">Kontak / WhatsApp</th>
@@ -296,57 +400,68 @@ export default function Index({ suppliers }: Props) {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            filteredSuppliers.map((s) => (
-                                                <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-[#2B271F] transition-colors group">
-                                                    <td className="py-3.5 px-5">
-                                                        <input type="checkbox" className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer" />
-                                                    </td>
-                                                    <td className="py-3.5 px-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-9 h-9 rounded-lg bg-[#f5b800]/10 flex items-center justify-center text-[#f5b800] font-bold text-xs shrink-0">
-                                                                {s.nama.substring(0, 2).toUpperCase()}
+                                            filteredSuppliers.map((s) => {
+                                                const isChecked = selectedIds.includes(s.id);
+                                                return (
+                                                    <tr
+                                                        key={s.id}
+                                                        className={`transition-colors group ${isChecked ? 'bg-[#f5b800]/5 dark:bg-[#f5b800]/10' : 'hover:bg-gray-50 dark:hover:bg-[#2B271F]'}`}
+                                                    >
+                                                        <td className="py-3.5 px-5">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isChecked}
+                                                                onChange={() => toggleSelectOne(s.id)}
+                                                                className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer"
+                                                            />
+                                                        </td>
+                                                        <td className="py-3.5 px-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-9 h-9 rounded-lg bg-[#f5b800]/10 flex items-center justify-center text-[#f5b800] font-bold text-xs shrink-0">
+                                                                    {s.nama.substring(0, 2).toUpperCase()}
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-semibold text-gray-900 dark:text-white">{s.nama}</div>
+                                                                    <div className="text-[10px] text-gray-500 font-mono mt-0.5">ID: SUP-{s.id.toString().padStart(3, '0')}</div>
+                                                                </div>
                                                             </div>
-                                                            <div>
-                                                                <div className="font-semibold text-gray-900 dark:text-white">{s.nama}</div>
-                                                                <div className="text-[10px] text-gray-500 font-mono mt-0.5">ID: SUP-{s.id.toString().padStart(3, '0')}</div>
+                                                        </td>
+                                                        <td className="py-3.5 px-4">
+                                                            {s.telepon ? (
+                                                                <a
+                                                                    href={getWhatsAppLink(s.telepon)}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center gap-1.5 text-green-600 dark:text-green-400 hover:underline font-medium"
+                                                                >
+                                                                    <MessageCircle className="size-4" />
+                                                                    {s.telepon}
+                                                                </a>
+                                                            ) : (
+                                                                <span className="text-gray-400 text-xs italic">Tidak ada kontak</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-3.5 px-4 text-gray-500 text-xs max-w-50 truncate">
+                                                            {s.alamat || '-'}
+                                                        </td>
+                                                        <td className="py-3.5 px-4 text-center">
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-[10px] font-bold">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Aktif
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3.5 px-4 text-right">
+                                                            <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                                                                <button onClick={() => startEdit(s)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="Edit Supplier">
+                                                                    <Pencil className="size-4" />
+                                                                </button>
+                                                                <button onClick={() => confirmDelete(s)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Hapus Supplier">
+                                                                    <Trash2 className="size-4" />
+                                                                </button>
                                                             </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-3.5 px-4">
-                                                        {s.telepon ? (
-                                                            <a
-                                                                href={getWhatsAppLink(s.telepon)}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="inline-flex items-center gap-1.5 text-green-600 dark:text-green-400 hover:underline font-medium"
-                                                            >
-                                                                <MessageCircle className="size-4" />
-                                                                {s.telepon}
-                                                            </a>
-                                                        ) : (
-                                                            <span className="text-gray-400 text-xs italic">Tidak ada kontak</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="py-3.5 px-4 text-gray-500 text-xs max-w-50 truncate">
-                                                        {s.alamat || '-'}
-                                                    </td>
-                                                    <td className="py-3.5 px-4 text-center">
-                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-[10px] font-bold">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Aktif
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3.5 px-4 text-right">
-                                                        <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={() => startEdit(s)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="Edit Supplier">
-                                                                <Pencil className="size-4" />
-                                                            </button>
-                                                            <button onClick={() => confirmDelete(s)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Hapus Supplier">
-                                                                <Trash2 className="size-4" />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
                                         )}
                                     </tbody>
                                 </table>
@@ -380,6 +495,52 @@ export default function Index({ suppliers }: Props) {
                             </Button>
                             <Button onClick={executeDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700 text-white">
                                 {isDeleting ? 'Menghapus...' : 'Ya, Hapus'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL KONFIRMASI BULK DELETE */}
+            {bulkDeleteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
+                    <div className="bg-white dark:bg-zinc-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-zinc-800 space-y-4 animate-in zoom-in-95 duration-150">
+                        <div className="flex items-center justify-between">
+                            <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 flex items-center justify-center">
+                                <Trash2 className="size-6" />
+                            </div>
+                            <button
+                                onClick={() => setBulkDeleteModal(false)}
+                                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                            >
+                                <X className="size-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-2">
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                                Hapus {selectedIds.length} Supplier Terpilih?
+                            </h2>
+                            <p className="text-sm text-gray-500 leading-relaxed">
+                                Apakah Anda yakin ingin menghapus <strong className="text-gray-900 dark:text-white">{selectedIds.length} supplier</strong> yang dipilih? Supplier yang sudah pernah memiliki riwayat transaksi stok masuk akan otomatis dilewati demi integritas data audit.
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-3 pt-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setBulkDeleteModal(false)}
+                                disabled={isBulkDeleting}
+                                className="flex-1 h-11 rounded-xl"
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                onClick={handleBulkDelete}
+                                disabled={isBulkDeleting}
+                                className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-sm"
+                            >
+                                {isBulkDeleting ? 'Menghapus...' : 'Ya, Hapus'}
                             </Button>
                         </div>
                     </div>

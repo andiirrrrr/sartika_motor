@@ -42,6 +42,8 @@ class PosController extends Controller
             'metode_bayar' => 'required|in:tunai,transfer,qris',
             'payment_method_id' => 'nullable|exists:payment_methods,id',
             'bayar' => 'nullable|numeric|min:0',
+            'nama_pelanggan' => 'nullable|string|max:100',
+            'no_wa' => 'nullable|string|max:25',
         ]);
 
         if (! empty($validated['payment_method_id'])) {

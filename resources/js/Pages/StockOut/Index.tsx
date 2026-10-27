@@ -40,7 +40,7 @@ export default function Index({ stockOuts, stats }: Props) {
         <AdminLayout>
             <Head title="Riwayat Stok Keluar" />
 
-            <div className="max-w-[1600px] mx-auto space-y-6 pb-12">
+            <div className="w-full max-w-[1600px] mx-auto min-w-0 space-y-6 pb-12">
 
                 {/* Header Halaman */}
                 <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
@@ -122,7 +122,7 @@ export default function Index({ stockOuts, stats }: Props) {
                 </div>
 
                 {/* Tabel Riwayat */}
-                <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden">
+                <div className="w-full max-w-full bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden">
                     <div className="p-4 border-b border-gray-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="relative w-full sm:w-80">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-4" />

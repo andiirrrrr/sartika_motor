@@ -125,6 +125,67 @@ export default function Index({ products, categories, filters, stats }: Props) {
         });
     };
 
+    // Selection & Bulk Action State
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+    const isAllSelected = products.data.length > 0 && products.data.every(p => selectedIds.includes(p.id));
+
+    const toggleSelectAll = () => {
+        if (isAllSelected) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(products.data.map(p => p.id));
+        }
+    };
+
+    const toggleSelectOne = (id: number) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedIds.length === 0) return;
+        setIsBulkDeleting(true);
+        router.post('/products/bulk-delete', { ids: selectedIds }, {
+            onSuccess: () => {
+                setSelectedIds([]);
+                setBulkDeleteModal(false);
+            },
+            onFinish: () => setIsBulkDeleting(false),
+            preserveScroll: true,
+        });
+    };
+
+    const handleExportSelected = () => {
+        const selectedProducts = products.data.filter(p => selectedIds.includes(p.id));
+        if (selectedProducts.length === 0) return;
+        const csvRows = [
+            ['No', 'Kode Barang', 'Nama Produk', 'Kategori', 'Satuan', 'Harga Beli', 'Harga Jual', 'Stok', 'Stok Minimum', 'Status'],
+            ...selectedProducts.map((p, idx) => [
+                idx + 1,
+                `"${p.kode_barang}"`,
+                `"${p.nama.replace(/"/g, '""')}"`,
+                `"${p.kategori || '-'}"`,
+                `"${p.satuan}"`,
+                p.harga_beli,
+                p.harga_jual,
+                p.stok,
+                p.stok_minimum,
+                p.aktif ? 'Aktif' : 'Nonaktif'
+            ])
+        ];
+        const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + csvRows.map(e => e.join(',')).join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `produk-terpilih-${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success(`${selectedProducts.length} produk berhasil diekspor.`);
+    };
+
     // Keyboard Shortcut untuk Modal Hapus (Enter/Esc)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -176,7 +237,7 @@ export default function Index({ products, categories, filters, stats }: Props) {
                 </div>
 
                 {/* Metrik Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl p-5 shadow-sm flex items-center justify-between relative overflow-hidden group">
                         <div className="relative z-10">
                             <div className="flex items-center gap-2 mb-1">
@@ -220,7 +281,7 @@ export default function Index({ products, categories, filters, stats }: Props) {
                 {/* Filter Toolbar */}
                 <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl p-4 shadow-sm">
                     <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-                        <div className="relative flex-1 min-w-70">
+                        <div className="relative flex-1 min-w-0 sm:min-w-60">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-5" />
                             <input
                                 type="text"
@@ -230,7 +291,7 @@ export default function Index({ products, categories, filters, stats }: Props) {
                                 className="w-full h-11 pl-10 pr-4 rounded-xl bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-[#f5b800] outline-none transition-all"
                             />
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <Select
                                 value={kategoriId}
                                 onChange={(val) => {
@@ -268,14 +329,54 @@ export default function Index({ products, categories, filters, stats }: Props) {
                     </div>
                 </div>
 
+                {/* Bulk Action Bar */}
+                {selectedIds.length > 0 && (
+                    <div className="bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 shadow-xs animate-in fade-in slide-in-from-top-2">
+                        <div className="flex items-center gap-2.5 text-xs font-semibold text-amber-900 dark:text-amber-200">
+                            <span className="w-2 h-2 rounded-full bg-[#f5b800] animate-pulse"></span>
+                            <span><strong>{selectedIds.length}</strong> produk dipilih</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedIds([])}
+                                className="h-8 text-xs bg-white dark:bg-zinc-900"
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleExportSelected}
+                                className="h-8 text-xs bg-white dark:bg-zinc-900 flex items-center gap-1.5"
+                            >
+                                <Download className="size-3.5" /> Ekspor ({selectedIds.length})
+                            </Button>
+                            <Button
+                                size="sm"
+                                onClick={() => setBulkDeleteModal(true)}
+                                className="h-8 text-xs bg-red-600 hover:bg-red-700 text-white font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            >
+                                <Trash2 className="size-3.5" /> Hapus Terpilih ({selectedIds.length})
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Table Container */}
-                <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden w-full max-w-full">
                     <div className="w-full overflow-x-auto">
                         <table className="w-full text-left border-collapse min-w-250">
                             <thead>
                                 <tr className="bg-gray-50 dark:bg-[#1C1A14] text-[10px] uppercase tracking-wider text-gray-500">
                                     <th className="py-3 px-4 font-semibold w-10 text-center">
-                                        <input type="checkbox" className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer" />
+                                        <input
+                                            type="checkbox"
+                                            checked={isAllSelected}
+                                            onChange={toggleSelectAll}
+                                            className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer"
+                                        />
                                     </th>
                                     <th className="py-3 px-4 font-semibold">SKU / Kode</th>
                                     <th className="py-3 px-4 font-semibold">Nama Produk</th>
@@ -299,11 +400,20 @@ export default function Index({ products, categories, filters, stats }: Props) {
                                         const stokMin = parseFloat(p.stok_minimum);
                                         const isLow = stokMin > 0 && stokNum <= stokMin;
                                         const isOut = stokNum <= 0;
+                                        const isChecked = selectedIds.includes(p.id);
 
                                         return (
-                                            <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-[#2B271F] transition-colors group">
+                                            <tr
+                                                key={p.id}
+                                                className={`transition-colors group ${isChecked ? 'bg-[#f5b800]/5 dark:bg-[#f5b800]/10' : 'hover:bg-gray-50 dark:hover:bg-[#2B271F]'}`}
+                                            >
                                                 <td className="py-3 px-4 text-center">
-                                                    <input type="checkbox" className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer" />
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isChecked}
+                                                        onChange={() => toggleSelectOne(p.id)}
+                                                        className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer"
+                                                    />
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     <div className="font-mono font-medium text-gray-900 dark:text-gray-300">{p.kode_barang}</div>
@@ -475,6 +585,63 @@ export default function Index({ products, categories, filters, stats }: Props) {
                                     <><RefreshCw className="mr-2 size-4 animate-spin" /> Menghapus...</>
                                 ) : (
                                     <><Trash2 className="mr-2 size-4" /> Ya, Hapus</>
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL KONFIRMASI HAPUS MASSAL */}
+            {bulkDeleteModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-in fade-in transition-all"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget && !isBulkDeleting) {
+                            setBulkDeleteModal(false);
+                        }
+                    }}
+                >
+                    <div className="relative w-full max-w-md bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl p-6 flex flex-col gap-5 animate-in zoom-in-95 duration-200">
+                        <div className="flex items-start justify-between">
+                            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400 shadow-sm">
+                                <Trash2 className="size-6" />
+                            </div>
+                            <button
+                                onClick={() => !isBulkDeleting && setBulkDeleteModal(false)}
+                                className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-zinc-900 text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center justify-center transition-colors"
+                            >
+                                <X className="size-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-2">
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+                                Hapus {selectedIds.length} Produk Terpilih?
+                            </h2>
+                            <p className="text-sm text-gray-500 leading-relaxed">
+                                Apakah Anda yakin ingin menghapus <strong className="text-gray-900 dark:text-white">{selectedIds.length} produk</strong> yang dipilih? Produk yang sudah memiliki riwayat transaksi atau pergerakan stok akan otomatis dilewati demi keamanan audit.
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-3 pt-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setBulkDeleteModal(false)}
+                                disabled={isBulkDeleting}
+                                className="flex-1 h-11 rounded-xl"
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                onClick={handleBulkDelete}
+                                disabled={isBulkDeleting}
+                                className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-md active:scale-95 transition-all"
+                            >
+                                {isBulkDeleting ? (
+                                    <><RefreshCw className="mr-2 size-4 animate-spin" /> Menghapus...</>
+                                ) : (
+                                    <><Trash2 className="mr-2 size-4" /> Ya, Hapus Semua</>
                                 )}
                             </Button>
                         </div>

@@ -10,6 +10,7 @@ import {
     ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 import { cn } from '@/lib/utils';
+import AnimatedNumber from '@/Components/AnimatedNumber';
 
 interface Props {
     stats: {
@@ -77,7 +78,7 @@ export default function Dashboard({
         <AdminLayout>
             <Head title="Dashboard - Sartika Motor" />
 
-            <div className="w-full max-w-[1600px] mx-auto space-y-6 pb-12">
+            <div className="w-full max-w-[1600px] mx-auto min-w-0 space-y-6 pb-12">
 
                 {/* Context Header */}
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
@@ -104,10 +105,6 @@ export default function Dashboard({
                             {periodButton('7days', '7 Hari')}
                             {periodButton('month', 'Bulan Ini')}
                         </div>
-
-                        <Link href="/pos" className="flex items-center gap-2 h-9 px-4 rounded-xl bg-[#f5b800] hover:bg-[#e0a800] text-gray-900 text-sm font-semibold shadow-md transition-transform active:scale-95">
-                            <ShoppingCart className="size-4" /> Transaksi Baru
-                        </Link>
                     </div>
                 </div>
 
@@ -142,7 +139,9 @@ export default function Dashboard({
                                 <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Omzet Penjualan</span>
                                 <div className="mt-2 flex items-baseline gap-1">
                                     <span className="text-sm text-gray-500 font-medium">Rp</span>
-                                    <span className="text-3xl font-bold text-gray-900 dark:text-white">{formatRupiah(stats.omzet)}</span>
+                                    <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                                        <AnimatedNumber value={stats.omzet} formatter={formatRupiah} />
+                                    </span>
                                 </div>
                             </div>
                             <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-[#2F2A1F] flex items-center justify-center text-[#f5b800]">
@@ -175,7 +174,9 @@ export default function Dashboard({
                             <div>
                                 <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Total Struk Transaksi</span>
                                 <div className="mt-2 flex items-baseline gap-2">
-                                    <span className="text-3xl font-bold text-gray-900 dark:text-white">{stats.transaksi}</span>
+                                    <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                                        <AnimatedNumber value={stats.transaksi} />
+                                    </span>
                                     <span className="text-xs text-gray-500">Struk Selesai</span>
                                 </div>
                             </div>
@@ -199,7 +200,9 @@ export default function Dashboard({
                             <div>
                                 <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Katalog Produk</span>
                                 <div className="mt-2 flex items-baseline gap-2">
-                                    <span className="text-3xl font-bold text-gray-900 dark:text-white">{stats.produk}</span>
+                                    <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                                        <AnimatedNumber value={stats.produk} />
+                                    </span>
                                     <span className="text-xs text-gray-500">SKU Aktif</span>
                                 </div>
                             </div>
@@ -226,7 +229,9 @@ export default function Dashboard({
                             <div>
                                 <span className="text-[11px] font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider">Stok Kritis</span>
                                 <div className="mt-2 flex items-baseline gap-2">
-                                    <span className="text-3xl font-bold text-red-600 dark:text-red-400">{stats.stok_kritis}</span>
+                                    <span className="text-3xl font-bold text-red-600 dark:text-red-400">
+                                        <AnimatedNumber value={stats.stok_kritis} />
+                                    </span>
                                     <span className="text-xs text-red-500 dark:text-red-300">SKU di batas minimum</span>
                                 </div>
                             </div>
@@ -259,7 +264,7 @@ export default function Dashboard({
                                 </div>
                             ) : (
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={salesTrend} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                                    <AreaChart key={activePeriod} data={salesTrend} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id="omzetFill" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="0%" stopColor="#f5b800" stopOpacity={0.35} />
@@ -273,7 +278,16 @@ export default function Dashboard({
                                             formatter={(v) => [`Rp ${formatRupiah(Number(v))}`, 'Omzet']}
                                             contentStyle={tooltipStyle}
                                         />
-                                        <Area type="monotone" dataKey="total_omzet" stroke="#f5b800" strokeWidth={2.5} fill="url(#omzetFill)" />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="total_omzet"
+                                            stroke="#f5b800"
+                                            strokeWidth={2.5}
+                                            fill="url(#omzetFill)"
+                                            isAnimationActive={true}
+                                            animationDuration={850}
+                                            animationEasing="ease-out"
+                                        />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             )}
@@ -290,7 +304,7 @@ export default function Dashboard({
                             <>
                                 <div className="h-44">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
+                                        <PieChart key={activePeriod}>
                                             <Pie
                                                 data={paymentMethods}
                                                 dataKey="total_revenue"
@@ -299,6 +313,9 @@ export default function Dashboard({
                                                 outerRadius={75}
                                                 paddingAngle={3}
                                                 stroke="none"
+                                                isAnimationActive={true}
+                                                animationDuration={850}
+                                                animationEasing="ease-out"
                                             >
                                                 {paymentMethods.map((m, i) => (
                                                     <Cell key={i} fill={PAYMENT_COLORS[m.metode_bayar] ?? '#9ca3af'} />
@@ -359,10 +376,14 @@ export default function Dashboard({
                                             Rp {formatRupiah(p.total_revenue)}
                                         </span>
                                     </div>
-                                    <div className="w-full h-2 rounded-full bg-gray-100 dark:bg-zinc-800">
+                                    <div className="w-full h-2 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
                                         <div
-                                            className="h-2 rounded-full bg-[#f5b800] transition-all duration-500"
-                                            style={{ width: `${(p.total_revenue / maxTopRevenue) * 100}%` }}
+                                            className="h-2 rounded-full bg-[#f5b800]"
+                                            style={{
+                                                width: `${(p.total_revenue / maxTopRevenue) * 100}%`,
+                                                transformOrigin: 'left',
+                                                animation: `chartBarSlide 600ms cubic-bezier(0.16, 1, 0.3, 1) ${i * 70}ms both`,
+                                            }}
                                         />
                                     </div>
                                 </div>

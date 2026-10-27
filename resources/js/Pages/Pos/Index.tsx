@@ -7,7 +7,7 @@ import {
     Printer, Barcode, CreditCard, Wallet,
     QrCode, CheckCircle2, PackageOpen, X,
     User, Clock, Info, Delete, Store, Lock, ArrowRight,
-    Building2, Copy, Check
+    Building2, Copy, Check, MessageCircle, Phone
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import { toast } from 'sonner';
@@ -138,7 +138,9 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
     const [lastSale, setLastSale] = useState<any>(null);
     const [showReceipt, setShowReceipt] = useState(false);
     const [autoPrint, setAutoPrint] = useState(true);
-    const [sendWA, setSendWA] = useState(true);
+    const [sendWA, setSendWA] = useState(false);
+    const [namaPelanggan, setNamaPelanggan] = useState('');
+    const [noWa, setNoWa] = useState('');
 
     // Kategori metode pembayaran aktif dari database
     const activePaymentMethods = paymentMethods.filter(m => m.aktif);
@@ -235,6 +237,11 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
             return;
         }
 
+        if (sendWA && !noWa.trim()) {
+            toast.error('Harap isi nomor WhatsApp pelanggan atau hilangkan centang Kirim E-Struk.');
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const response = await fetch('/pos/checkout', {
@@ -248,6 +255,8 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
                     metode_bayar: metodeBayar,
                     payment_method_id: currentMethod ? currentMethod.id : null,
                     bayar: metodeBayar === 'tunai' ? numericBayar : total,
+                    nama_pelanggan: sendWA && namaPelanggan.trim() ? namaPelanggan.trim() : null,
+                    no_wa: sendWA && noWa.trim() ? noWa.trim() : null,
                 })
             });
 
@@ -260,6 +269,8 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
             clearCart();
             setShowPayment(false);
             setBayar('');
+            setNamaPelanggan('');
+            setNoWa('');
             setLastSale(data.sale);
             setShowReceipt(true);
 
@@ -279,6 +290,61 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleSendWhatsApp = () => {
+        if (!lastSale) return;
+
+        const rawPhone = lastSale.no_wa || noWa;
+        if (!rawPhone) {
+            toast.error('Nomor WhatsApp pelanggan belum diisi!');
+            return;
+        }
+
+        let cleanPhone = rawPhone.replace(/\D/g, '');
+        if (cleanPhone.startsWith('0')) {
+            cleanPhone = '62' + cleanPhone.slice(1);
+        } else if (cleanPhone.startsWith('8')) {
+            cleanPhone = '62' + cleanPhone;
+        }
+
+        const waktu = new Date(lastSale.tanggal).toLocaleString('id-ID', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+
+        const itemsList = (lastSale.items || []).map((item: any, idx: number) => {
+            return `${idx + 1}. *${item.nama_produk}*\n   ${item.qty} x Rp ${formatRupiah(item.harga_jual)} = Rp ${formatRupiah(item.subtotal)}`;
+        }).join('\n');
+
+        const storeName = app_settings?.store_name || 'SARTIKA MOTOR';
+        const storeAddress = app_settings?.store_address || '';
+        const storePhone = app_settings?.store_phone || '';
+
+        const message =
+            `*STRUK PEMBELIAN DIGITAL*
+*${storeName.toUpperCase()}*
+${storeAddress ? storeAddress + '\n' : ''}${storePhone ? 'Telp: ' + storePhone + '\n' : ''}------------------------------------------
+No. Struk : *${lastSale.no_transaksi}*
+Waktu     : ${waktu}
+Kasir     : ${lastSale.kasir?.nama || user?.nama || 'Kasir'}
+Pelanggan : *${lastSale.nama_pelanggan || 'Pelanggan Umum'}*
+------------------------------------------
+*DAFTAR BELANJA:*
+${itemsList}
+------------------------------------------
+*TOTAL AKHIR : Rp ${formatRupiah(lastSale.total)}*
+Bayar (${lastSale.payment_method?.nama || lastSale.metode_bayar}) : Rp ${formatRupiah(lastSale.bayar)}
+Kembali : Rp ${formatRupiah(lastSale.kembalian)}
+------------------------------------------
+_${app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kami!'}_`;
+
+        const encodedText = encodeURIComponent(message);
+        window.open(`https://wa.me/${cleanPhone}?text=${encodedText}`, '_blank');
+        toast.success('Membuka WhatsApp untuk mengirim E-Struk...');
     };
 
     const formatRupiah = (n: number) => new Intl.NumberFormat('id-ID').format(n);
@@ -938,12 +1004,48 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
                                 </label>
                                 <label className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-zinc-800 cursor-pointer">
                                     <div className="flex items-center gap-2">
-                                        <QrCode className="size-4 text-gray-500" />
+                                        <QrCode className="size-4 text-green-600" />
                                         <span className="text-sm font-medium">Kirim E-Struk</span>
                                     </div>
                                     <input type="checkbox" checked={sendWA} onChange={(e) => setSendWA(e.target.checked)} className="w-5 h-5 accent-[#f5b800]" />
                                 </label>
                             </div>
+
+                            {/* Kolom Input Pelanggan (Muncul jika Kirim E-Struk dicentang) */}
+                            {sendWA && (
+                                <div className="p-4 rounded-xl bg-green-50/70 dark:bg-green-950/20 border border-green-200 dark:border-green-900/30 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="flex items-center gap-2 text-xs font-semibold text-green-800 dark:text-green-400">
+                                        <MessageCircle className="size-4 text-green-600" />
+                                        <span>Data Pelanggan E-Struk WhatsApp</span>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[11px] font-medium text-gray-600 dark:text-gray-300 block mb-1">
+                                                Nama Pelanggan
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={namaPelanggan}
+                                                onChange={(e) => setNamaPelanggan(e.target.value)}
+                                                placeholder="Cth: Pak Anto"
+                                                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[11px] font-medium text-gray-600 dark:text-gray-300 block mb-1">
+                                                Nomor WhatsApp <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="tel"
+                                                value={noWa}
+                                                onChange={(e) => setNoWa(e.target.value.replace(/[^\d+]/g, ''))}
+                                                placeholder="Cth: 081234567890"
+                                                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Footer Actions */}
@@ -999,6 +1101,7 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
                                 <div className="py-3 flex flex-col gap-1 border-b border-dashed border-gray-300 text-xs">
                                     <div className="flex justify-between"><span className="text-gray-500">No. Struk</span><span className="font-bold">{lastSale.no_transaksi}</span></div>
                                     <div className="flex justify-between"><span className="text-gray-500">Kasir</span><span>{lastSale.kasir?.nama}</span></div>
+                                    <div className="flex justify-between"><span className="text-gray-500">Pelanggan</span><span>{lastSale.nama_pelanggan || 'Pelanggan Umum'}</span></div>
                                     <div className="flex justify-between"><span className="text-gray-500">Waktu</span><span>{new Date(lastSale.tanggal).toLocaleString('id-ID')}</span></div>
                                 </div>
 
@@ -1053,14 +1156,14 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
                         {/* Tombol Aksi */}
                         <div className="w-full flex flex-col gap-2 mt-4 no-print">
                             <Button onClick={() => window.print()} className="w-full h-12 bg-[#f5b800] hover:bg-[#e0a800] text-gray-900 font-bold rounded-xl shadow-lg">
-                                <Printer className="size-5 mr-2" /> Cetak Struk [F9]
+                                <Printer className="size-5 mr-2" /> Cetak Struk
                             </Button>
                             <div className="grid grid-cols-2 gap-2">
-                                <Button onClick={() => { toast.success('E-Struk berhasil dikirim!'); }} className="w-full h-10 bg-white hover:bg-gray-100 text-gray-800 font-medium rounded-xl">
+                                <Button onClick={handleSendWhatsApp} className="w-full h-10 bg-white hover:bg-gray-100 text-gray-800 font-medium rounded-xl transition-colors">
                                     <QrCode className="size-4 mr-2 text-green-600" /> Kirim WhatsApp
                                 </Button>
-                                <Button variant="outline" onClick={() => setShowReceipt(false)} className="w-full h-10 border-gray-600 text-white hover:bg-white/10 rounded-xl">
-                                    Tutup [Esc]
+                                <Button onClick={() => setShowReceipt(false)} className="w-full h-10 bg-white hover:bg-gray-100 text-gray-800 font-medium rounded-xl transition-colors">
+                                    Tutup
                                 </Button>
                             </div>
                         </div>

@@ -197,7 +197,7 @@ export default function Show({ product, kategori, movements, totalInBulanIni, to
                 </div>
 
                 {/* Tabel Riwayat Mutasi */}
-                <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden flex flex-col">
+                <div className="w-full max-w-full bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden flex flex-col">
 
                     {/* Toolbar Tabel */}
                     <div className="p-4 border-b border-gray-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

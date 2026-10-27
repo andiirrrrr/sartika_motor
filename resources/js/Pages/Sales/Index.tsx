@@ -4,10 +4,13 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
 import {
     Plus, Search, Receipt, TrendingUp,
-    Wallet, ShoppingCart, FileText, Eye
+    Wallet, ShoppingCart, FileText, Eye,
+    Download, Printer
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import AnimatedNumber from '@/Components/AnimatedNumber';
 
 interface Props {
     sales: {
@@ -43,6 +46,122 @@ export default function Index({ sales, filters, stats }: Props) {
     const [search, setSearch] = useState(filters.search);
     const [from, setFrom] = useState(filters.from);
     const [to, setTo] = useState(filters.to);
+
+    // Selection State
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+    const isAllSelected = sales.data.length > 0 && sales.data.every(s => selectedIds.includes(s.id));
+
+    const toggleSelectAll = () => {
+        if (isAllSelected) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(sales.data.map(s => s.id));
+        }
+    };
+
+    const toggleSelectOne = (id: number) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const selectedSales = sales.data.filter(s => selectedIds.includes(s.id));
+    const selectedTotalNominal = selectedSales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
+
+    const handleExportSelectedCSV = () => {
+        if (selectedSales.length === 0) return;
+
+        const headers = ['No. Struk', 'Tanggal & Waktu', 'Kasir', 'Metode Bayar', 'Jumlah Item', 'Total Belanja (Rp)', 'Status'];
+        const rows = selectedSales.map(s => [
+            `"${s.no_transaksi}"`,
+            `"${new Date(s.tanggal).toLocaleString('id-ID')}"`,
+            `"${s.kasir?.nama || '-'}"`,
+            `"${s.payment_method?.nama || s.metode_bayar}"`,
+            s.items_count,
+            s.total,
+            '"Lunas"'
+        ]);
+
+        const csvContent = 'data:text/csv;charset=utf-8,\uFEFF'
+            + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `rekap_transaksi_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success(`${selectedSales.length} transaksi berhasil diekspor ke CSV`);
+    };
+
+    const handlePrintSelected = () => {
+        if (selectedSales.length === 0) return;
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            toast.error('Gagal membuka jendela cetak. Pastikan pop-up diizinkan browser.');
+            return;
+        }
+
+        const rowsHtml = selectedSales.map((s, idx) => `
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${idx + 1}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-family: monospace; font-weight: bold;">${s.no_transaksi}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${new Date(s.tanggal).toLocaleString('id-ID')}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${s.kasir?.nama || '-'}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${s.payment_method?.nama || s.metode_bayar}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${s.items_count}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right; font-weight: bold;">Rp ${formatRupiah(s.total)}</td>
+            </tr>
+        `).join('');
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Rekap Transaksi Terpilih - Sartika Motor</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 24px; color: #333; font-size: 13px; }
+                    h2 { margin-bottom: 4px; }
+                    .meta { color: #666; font-size: 12px; margin-bottom: 16px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+                    th { background: #f4f4f4; padding: 8px; text-align: left; font-size: 12px; border-bottom: 2px solid #ccc; }
+                    .total-row { font-size: 14px; font-weight: bold; background: #fafafa; }
+                </style>
+            </head>
+            <body>
+                <h2>SARTIKA MOTOR - REKAP TRANSAKSI POS</h2>
+                <div class="meta">
+                    Tanggal Cetak: ${new Date().toLocaleString('id-ID')} | Total Dipilih: ${selectedSales.length} Transaksi
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="text-align: center; width: 40px;">No</th>
+                            <th>No. Struk</th>
+                            <th>Waktu Transaksi</th>
+                            <th>Kasir</th>
+                            <th>Metode Bayar</th>
+                            <th style="text-align: center;">Jml Item</th>
+                            <th style="text-align: right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                        <tr class="total-row">
+                            <td colspan="6" style="padding: 10px; text-align: right; border-top: 2px solid #333;">TOTAL KESELURUHAN:</td>
+                            <td style="padding: 10px; text-align: right; border-top: 2px solid #333; font-weight: bold;">Rp ${formatRupiah(selectedTotalNominal)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <script>
+                    window.onload = function() { window.print(); };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
 
     const applyFilter = (overrides: Record<string, unknown> = {}) => {
         router.get('/sales', {
@@ -117,15 +236,9 @@ export default function Index({ sales, filters, stats }: Props) {
                             </h1>
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f5b800]/20 text-[#f5b800] text-xs font-bold shadow-sm">
                                 <span className="w-2 h-2 rounded-full bg-[#f5b800] animate-pulse"></span>
-                                {stats.transaksi} Transaksi Selesai
+                                <AnimatedNumber value={stats.transaksi} /> Transaksi Selesai
                             </span>
                         </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <Link href="/pos" className="h-10 px-5 rounded-xl bg-[#f5b800] hover:bg-[#e0a800] text-gray-900 text-sm font-bold shadow-sm flex items-center gap-2 transition-transform active:scale-95">
-                            <Plus className="size-5" /> Transaksi Baru
-                        </Link>
                     </div>
                 </div>
 
@@ -135,7 +248,9 @@ export default function Index({ sales, filters, stats }: Props) {
                         <div className="flex items-start justify-between">
                             <div>
                                 <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Total Omzet Kotor</p>
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">Rp {formatRupiah(stats.omzet)}</p>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                                    Rp <AnimatedNumber value={stats.omzet} formatter={formatRupiah} />
+                                </p>
                             </div>
                             <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-600">
                                 <TrendingUp className="size-5" />
@@ -147,7 +262,9 @@ export default function Index({ sales, filters, stats }: Props) {
                         <div className="flex items-start justify-between">
                             <div>
                                 <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Total Struk / Faktur</p>
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stats.transaksi} Struk</p>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                                    <AnimatedNumber value={stats.transaksi} /> Struk
+                                </p>
                             </div>
                             <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600">
                                 <Receipt className="size-5" />
@@ -159,7 +276,9 @@ export default function Index({ sales, filters, stats }: Props) {
                         <div className="flex items-start justify-between">
                             <div>
                                 <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Rata-rata (AOV)</p>
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">Rp {formatRupiah(stats.aov)}</p>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                                    Rp <AnimatedNumber value={stats.aov} formatter={formatRupiah} />
+                                </p>
                             </div>
                             <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600">
                                 <ShoppingCart className="size-5" />
@@ -260,14 +379,64 @@ export default function Index({ sales, filters, stats }: Props) {
                     </form>
                 </div>
 
+                {/* Bulk Action Bar */}
+                {selectedIds.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[#f5b800]/10 border border-[#f5b800]/30 rounded-xl animate-in fade-in slide-in-from-top-2 duration-150">
+                        <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-[#f5b800] animate-pulse"></span>
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                                {selectedIds.length} transaksi dipilih
+                            </span>
+                            <span className="text-xs text-gray-500 font-medium">
+                                (Total: <strong className="text-gray-900 dark:text-white">Rp {formatRupiah(selectedTotalNominal)}</strong>)
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedIds([])}
+                                className="h-8 text-xs font-medium"
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleExportSelectedCSV}
+                                className="h-8 text-xs font-semibold flex items-center gap-1.5"
+                            >
+                                <Download className="size-3.5" />
+                                Unduh CSV ({selectedIds.length})
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                onClick={handlePrintSelected}
+                                className="h-8 text-xs font-semibold bg-[#f5b800] hover:bg-[#e0a800] text-gray-900 shadow-sm flex items-center gap-1.5"
+                            >
+                                <Printer className="size-3.5" />
+                                Cetak Rekap ({selectedIds.length})
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Data Table */}
-                <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
+                <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden w-full max-w-full">
+                    <div className="w-full overflow-x-auto">
                         <table className="w-full text-left border-collapse min-w-250">
                             <thead>
                                 <tr className="bg-gray-50 dark:bg-[#1C1A14] text-[10px] uppercase tracking-wider text-gray-500">
                                     <th className="py-3 px-4 font-semibold text-center w-12">
-                                        <input type="checkbox" className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer" />
+                                        <input
+                                            type="checkbox"
+                                            checked={isAllSelected}
+                                            onChange={toggleSelectAll}
+                                            className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer"
+                                        />
                                     </th>
                                     <th className="py-3 px-4 font-semibold">No. Struk</th>
                                     <th className="py-3 px-4 font-semibold">Waktu Transaksi</th>
@@ -285,52 +454,72 @@ export default function Index({ sales, filters, stats }: Props) {
                                         <td colSpan={9} className="py-12 text-center text-gray-500">Tidak ada transaksi pada periode ini.</td>
                                     </tr>
                                 ) : (
-                                    sales.data.map((sale) => (
-                                        <tr key={sale.id} className="hover:bg-gray-50 dark:hover:bg-[#2B271F] transition-colors group">
-                                            <td className="py-3 px-4 text-center">
-                                                <input type="checkbox" className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer" />
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <div className="font-mono font-bold text-[#f5b800] text-sm">{sale.no_transaksi}</div>
-                                                <div className="text-[10px] text-gray-500">Pelanggan Umum</div>
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <div className="font-medium text-gray-900 dark:text-white">
-                                                    {new Date(sale.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                </div>
-                                                <div className="text-[10px] text-gray-500">
-                                                    {new Date(sale.tanggal).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
-                                                </div>
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <div className="font-medium text-gray-900 dark:text-white">{sale.kasir?.nama}</div>
-                                                <div className="text-[10px] text-gray-500">POS Register</div>
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 text-xs font-medium capitalize">
-                                                    {getMetodeIcon(sale.metode_bayar)} {sale.payment_method?.nama || sale.metode_bayar}
-                                                </span>
-                                            </td>
-                                            <td className="py-3 px-4 text-center font-medium">
-                                                {sale.items_count} item
-                                            </td>
-                                            <td className="py-3 px-4 text-right font-bold text-gray-900 dark:text-white">
-                                                Rp {formatRupiah(sale.total)}
-                                            </td>
-                                            <td className="py-3 px-4 text-center">
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-[10px] font-bold">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Lunas
-                                                </span>
-                                            </td>
-                                            <td className="py-3 px-4 text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <Link href={`/sales/${sale.id}`} className="inline-flex items-center gap-1 h-8 px-3 rounded-lg bg-gray-100 dark:bg-zinc-800 hover:bg-[#f5b800]/20 text-gray-700 dark:text-gray-300 text-xs font-medium transition-colors">
-                                                        <Eye className="size-3.5" /> Struk
-                                                    </Link>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
+                                    sales.data.map((sale) => {
+                                        const isChecked = selectedIds.includes(sale.id);
+                                        return (
+                                            <tr
+                                                key={sale.id}
+                                                className={`transition-colors group ${isChecked ? 'bg-[#f5b800]/5 dark:bg-[#f5b800]/10' : 'hover:bg-gray-50 dark:hover:bg-[#2B271F]'}`}
+                                            >
+                                                <td className="py-3 px-4 text-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isChecked}
+                                                        onChange={() => toggleSelectOne(sale.id)}
+                                                        className="rounded text-[#f5b800] focus:ring-[#f5b800] cursor-pointer"
+                                                    />
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <div className="font-mono font-bold text-[#f5b800] text-sm">{sale.no_transaksi}</div>
+                                                    {sale.nama_pelanggan ? (
+                                                        <div className="flex flex-col mt-0.5">
+                                                            <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate max-w-[150px]">{sale.nama_pelanggan}</span>
+                                                            {sale.no_wa && (
+                                                                <span className="text-[10px] text-green-600 dark:text-green-400 font-mono">{sale.no_wa}</span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-[10px] text-gray-400">Pelanggan Umum</div>
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <div className="font-medium text-gray-900 dark:text-white">
+                                                        {new Date(sale.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-500">
+                                                        {new Date(sale.tanggal).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
+                                                    </div>
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <div className="font-medium text-gray-900 dark:text-white">{sale.kasir?.nama}</div>
+                                                    <div className="text-[10px] text-gray-500">POS Register</div>
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 text-xs font-medium capitalize">
+                                                        {getMetodeIcon(sale.metode_bayar)} {sale.payment_method?.nama || sale.metode_bayar}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 px-4 text-center font-medium">
+                                                    {sale.items_count} item
+                                                </td>
+                                                <td className="py-3 px-4 text-right font-bold text-gray-900 dark:text-white">
+                                                    Rp {formatRupiah(sale.total)}
+                                                </td>
+                                                <td className="py-3 px-4 text-center">
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-[10px] font-bold">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Lunas
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 px-4 text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <Link href={`/sales/${sale.id}`} className="inline-flex items-center gap-1 h-8 px-3 rounded-lg bg-gray-100 dark:bg-zinc-800 hover:bg-[#f5b800]/20 text-gray-700 dark:text-gray-300 text-xs font-medium transition-colors">
+                                                            <Eye className="size-3.5" /> Struk
+                                                        </Link>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>

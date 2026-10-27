@@ -129,7 +129,7 @@ export default function Index({ users }: Props) {
         <AdminLayout>
             <Head title="Manajemen User" />
 
-            <div className="max-w-[1600px] mx-auto space-y-6 pb-12">
+            <div className="w-full max-w-[1600px] mx-auto min-w-0 space-y-6 pb-12">
 
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-2">
@@ -310,7 +310,7 @@ export default function Index({ users }: Props) {
                         </div>
 
                         {/* Tabel User */}
-                        <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden">
+                        <div className="w-full max-w-full bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse min-w-175">
                                     <thead>
