@@ -470,7 +470,14 @@ export default function Index({ sales, filters, stats }: Props) {
                                                     />
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    <div className="font-mono font-bold text-[#f5b800] text-sm">{sale.no_transaksi}</div>
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className="font-mono font-bold text-[#f5b800] text-sm">{sale.no_transaksi}</span>
+                                                        {sale.has_grosir ? (
+                                                            <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30">
+                                                                GROSIR
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
                                                     {sale.nama_pelanggan ? (
                                                         <div className="flex flex-col mt-0.5">
                                                             <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate max-w-[150px]">{sale.nama_pelanggan}</span>
@@ -487,7 +494,7 @@ export default function Index({ sales, filters, stats }: Props) {
                                                         {new Date(sale.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </div>
                                                     <div className="text-[10px] text-gray-500">
-                                                        {new Date(sale.tanggal).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
+                                                        {new Date(sale.tanggal).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WITA
                                                     </div>
                                                 </td>
                                                 <td className="py-3 px-4">

@@ -144,7 +144,7 @@ export default function AdminLayout({ children }: Props) {
                             onClick={() => setMobileOpen(false)}
                             title={isCollapsed ? item.label : undefined}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${window.location.pathname.startsWith(item.href)
-                                ? 'bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white font-medium'
+                                ? 'bg-amber-50 dark:bg-amber-500/15 text-amber-900 dark:text-amber-300 font-medium border border-amber-200 dark:border-amber-500/25'
                                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50'
                                 } ${isCollapsed && !mobileOpen ? 'md:justify-center' : ''}`}
                         >
@@ -161,7 +161,7 @@ export default function AdminLayout({ children }: Props) {
                             onClick={() => setMobileOpen(false)}
                             title={isCollapsed ? item.label : undefined}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${window.location.pathname.startsWith(item.href)
-                                ? 'bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white font-medium'
+                                ? 'bg-amber-50 dark:bg-amber-500/15 text-amber-900 dark:text-amber-300 font-medium border border-amber-200 dark:border-amber-500/25'
                                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50'
                                 } ${isCollapsed && !mobileOpen ? 'md:justify-center' : ''}`}
                         >

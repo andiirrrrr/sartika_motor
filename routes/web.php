@@ -24,6 +24,10 @@ use Inertia\Inertia;
 // Redirect root sesuai status login
 Route::get('/', function () {
     if (auth()->check()) {
+        if (auth()->user()->role === 'kasir') {
+            return redirect()->route('pos.index');
+        }
+
         return redirect()->route('dashboard');
     }
 
@@ -157,7 +161,7 @@ Route::middleware('auth')->group(function () {
             'paymentMethods' => $paymentMethods,
             'filters' => ['period' => $period],
         ]);
-    })->name('dashboard');
+    })->middleware('role:admin')->name('dashboard');
 
     // POS (Admin & Kasir bisa akses)
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');

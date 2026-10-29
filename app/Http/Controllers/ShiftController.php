@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Shift;
 use App\Models\Sale;
+use App\Models\Shift;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -11,11 +11,11 @@ use Inertia\Response;
 
 class ShiftController extends Controller
 {
-        public function index(): Response
+    public function index(): Response
     {
         // 1. Ambil data shift dengan perhitungan Non-Tunai
         $shifts = Shift::with('user:id,nama')
-            ->withSum(['sales' => function($query) {
+            ->withSum(['sales' => function ($query) {
                 $query->whereIn('metode_bayar', ['qris', 'transfer']);
             }], 'total')
             ->orderByDesc('id')
@@ -68,7 +68,7 @@ class ShiftController extends Controller
         ]);
 
         $shift = Shift::where('user_id', Auth::id())->where('status', 'buka')->first();
-        if (!$shift) {
+        if (! $shift) {
             return back()->with('error', 'Tidak ada shift aktif.');
         }
 
@@ -87,6 +87,10 @@ class ShiftController extends Controller
             'selisih' => $selisih,
             'status' => 'tutup',
         ]);
+
+        if (Auth::user()?->role === 'kasir') {
+            return redirect()->route('pos.index')->with('success', 'Shift ditutup. Terima kasih atas kerja kerasnya!');
+        }
 
         return redirect()->route('dashboard')->with('success', 'Shift ditutup. Terima kasih atas kerja kerasnya!');
     }

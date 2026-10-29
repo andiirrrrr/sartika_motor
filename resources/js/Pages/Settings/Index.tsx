@@ -4,7 +4,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { Button } from '@/Components/ui/button';
 import {
     Store, User as UserIcon, Save, ShieldCheck,
-    Printer, Monitor, Check, X
+    Printer, Monitor, Check, X, Eye, EyeOff, Lock
 } from 'lucide-react';
 import { Select } from '@/Components/ui/select';
 import { toast } from 'sonner';
@@ -28,6 +28,8 @@ export default function Index({ settings, user }: Props) {
     const [autoCut, setAutoCut] = useState(true);
     const [cashDrawer, setCashDrawer] = useState(true);
     const [printerMode, setPrinterMode] = useState('80mm');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Form 1: Info Toko
     const storeForm = useForm({
@@ -257,13 +259,23 @@ export default function Index({ settings, user }: Props) {
 
                                 <div className="space-y-3">
                                     <div>
-                                        <input
-                                            type="password"
-                                            value={profileForm.data.password}
-                                            onChange={(e) => profileForm.setData('password', e.target.value)}
-                                            className="w-full h-11 px-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none"
-                                            placeholder="Password Baru"
-                                        />
+                                        <div className="relative">
+                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-4" />
+                                            <input
+                                                type={showPassword ? 'text' : 'password'}
+                                                value={profileForm.data.password}
+                                                onChange={(e) => profileForm.setData('password', e.target.value)}
+                                                className="w-full h-11 pl-10 pr-10 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none"
+                                                placeholder="Password Baru"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                            >
+                                                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                                            </button>
+                                        </div>
                                         {profileForm.errors.password && <p className="text-xs text-red-500 mt-1">{profileForm.errors.password}</p>}
 
                                         {/* VALIDASI REALTIME */}
@@ -279,13 +291,32 @@ export default function Index({ settings, user }: Props) {
                                         )}
                                     </div>
                                     <div>
-                                        <input
-                                            type="password"
-                                            value={profileForm.data.password_confirmation}
-                                            onChange={(e) => profileForm.setData('password_confirmation', e.target.value)}
-                                            className="w-full h-11 px-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none"
-                                            placeholder="Konfirmasi Password Baru"
-                                        />
+                                        <div className="relative">
+                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-4" />
+                                            <input
+                                                type={showConfirmPassword ? 'text' : 'password'}
+                                                value={profileForm.data.password_confirmation}
+                                                onChange={(e) => profileForm.setData('password_confirmation', e.target.value)}
+                                                className="w-full h-11 pl-10 pr-10 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none"
+                                                placeholder="Konfirmasi Password Baru"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                            >
+                                                {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                                            </button>
+                                        </div>
+                                        {profileForm.errors.password_confirmation && <p className="text-xs text-red-500 mt-1">{profileForm.errors.password_confirmation}</p>}
+
+                                        {/* Indikator Kecocokan Password */}
+                                        {profileForm.data.password_confirmation.length > 0 && (
+                                            <div className={`flex items-center text-[11px] mt-1 ${profileForm.data.password === profileForm.data.password_confirmation ? 'text-green-600' : 'text-red-500'}`}>
+                                                {profileForm.data.password === profileForm.data.password_confirmation ? <Check className="mr-1 size-3" /> : <X className="mr-1 size-3" />}
+                                                {profileForm.data.password === profileForm.data.password_confirmation ? 'Password cocok' : 'Password tidak cocok'}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <p className="text-[10px] text-gray-500 mt-2">Biarkan kosong jika tidak ingin mengubah password.</p>

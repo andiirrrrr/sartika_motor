@@ -253,6 +253,15 @@ export default function Index({ users }: Props) {
                                     </div>
                                 </div>
                                 {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
+                                {errors.password_confirmation && <p className="text-xs text-red-500 mt-1">{errors.password_confirmation}</p>}
+
+                                {/* Password match indicator */}
+                                {data.password_confirmation.length > 0 && (
+                                    <div className={`flex items-center text-[11px] mt-1 ${data.password === data.password_confirmation ? 'text-green-600' : 'text-red-500'}`}>
+                                        {data.password === data.password_confirmation ? <Check className="mr-1 size-3" /> : <X className="mr-1 size-3" />}
+                                        {data.password === data.password_confirmation ? 'Password cocok' : 'Password tidak cocok'}
+                                    </div>
+                                )}
 
                                 {/* Realtime Checklist */}
                                 {pw.length > 0 && (

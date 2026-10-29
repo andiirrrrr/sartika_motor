@@ -46,7 +46,7 @@ export default function Index({ shifts, stats }: Props) {
     const handleCloseShift = (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        router.post('/shifts/close', { uang_fisik: Number(uangFisik) }, {
+        router.post('/shifts/close', { uang_fisik: Number(uangFisik.replace(/\D/g, '')) }, {
             onSuccess: () => {
                 setShowEndShift(false);
                 setUangFisik('');
@@ -381,10 +381,15 @@ export default function Index({ shifts, stats }: Props) {
                                 <div className="relative">
                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rp</span>
                                     <input
-                                        type="number"
+                                        type="text"
+                                        inputMode="numeric"
                                         value={uangFisik}
-                                        onChange={(e) => setUangFisik(e.target.value)}
+                                        onChange={(e) => {
+                                            const raw = e.target.value.replace(/\D/g, '');
+                                            setUangFisik(raw ? new Intl.NumberFormat('id-ID').format(Number(raw)) : '');
+                                        }}
                                         className="w-full h-12 pl-12 pr-4 rounded-xl bg-gray-50 dark:bg-zinc-800 border-2 border-[#f5b800] text-lg font-bold text-gray-900 dark:text-white focus:outline-none"
+                                        placeholder="0"
                                         required
                                         autoFocus
                                     />

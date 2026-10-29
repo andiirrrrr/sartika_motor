@@ -4,8 +4,9 @@ import { Button } from '@/Components/ui/button';
 import {
     ArrowLeft, Printer, ShieldCheck, User,
     Calendar, CreditCard, FileText, CheckCircle2,
-    Wallet, QrCode, Building2, Store
+    Wallet, QrCode, Building2, Store, Tags
 } from 'lucide-react';
+import ReceiptPreview from '@/Components/ReceiptPreview';
 
 interface Props {
     sale: {
@@ -66,7 +67,8 @@ export default function Show({ sale, app_settings }: Props) {
         });
 
         const itemsList = (sale.items || []).map((item: any, idx: number) => {
-            return `${idx + 1}. *${item.nama_produk}*\n   ${item.qty} x Rp ${formatRupiah(item.harga_jual)} = Rp ${formatRupiah(item.subtotal)}`;
+            const grosirTag = item.is_grosir ? ' _[Grosir]_' : '';
+            return `${idx + 1}. *${item.nama_produk}*${grosirTag}\n   ${parseFloat(item.qty)} x Rp ${formatRupiah(item.harga_jual)} = Rp ${formatRupiah(item.subtotal)}`;
         }).join('\n');
 
         const storeName = app_settings?.store_name || 'SARTIKA MOTOR';
@@ -148,133 +150,9 @@ _${app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kam
                         </div>
 
                         {/* Container Kertas Struk */}
-                        <div className="relative w-full max-w-[320px] transition-transform duration-300">
-                            {/* Efek Gerigi Atas */}
-                            <div className="w-full h-3 overflow-hidden flex items-end no-print">
-                                <div className="w-full h-2.5 bg-[#FAF9F5] dark:bg-zinc-200 [mask-image:radial-gradient(circle_at_5px_0px,transparent_4px,#FAF9F5_5px)] [mask-size:10px_10px]"></div>
-                            </div>
+                        <ReceiptPreview sale={sale} appSettings={app_settings} />
 
-                            {/* Body Kertas Struk */}
-                            <div id="print-section" className="bg-[#FAF9F5] px-6 py-7 shadow-xl text-[#1F1D17] relative">
 
-                                {/* Header Toko */}
-                                <div className="text-center space-y-1 mb-4">
-                                    <div className="inline-flex items-center justify-center gap-1.5 mb-1">
-                                        <span className="text-xl font-bold tracking-tight uppercase" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                                            {app_settings?.store_name || 'SARTIKA MOTOR'}
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-gray-600 leading-tight max-w-[300px] mx-auto">
-                                        {app_settings?.store_address || 'Jl. Raya Motor No. 123'}
-                                    </p>
-                                    <p className="text-[11px] text-gray-500 font-mono">
-                                        Telp: {app_settings?.store_phone || '0812-3456-7890'}
-                                    </p>
-                                </div>
-
-                                <div className="my-3 border-b border-dashed border-gray-400"></div>
-
-                                {/* Meta Transaksi */}
-                                <div className="font-mono text-xs text-gray-800 space-y-1.5">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-500">No. Struk</span>
-                                        <span className="font-bold">{sale.no_transaksi}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-500">Waktu</span>
-                                        <span>{new Date(sale.tanggal).toLocaleString('id-ID')}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-500">Kasir</span>
-                                        <span>{sale.kasir?.nama}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-500">Pelanggan</span>
-                                        <span className="font-semibold">{sale.nama_pelanggan || 'Pelanggan Umum'}</span>
-                                    </div>
-                                </div>
-
-                                <div className="my-3 border-b border-dashed border-gray-400"></div>
-
-                                {/* Header Item */}
-                                <div className="text-[10px] text-gray-500 uppercase tracking-wider flex justify-between pb-1 font-mono">
-                                    <span className="w-1/2">Item / Qty</span>
-                                    <span className="w-1/4 text-right">Harga</span>
-                                    <span className="w-1/4 text-right">Total</span>
-                                </div>
-
-                                {/* List Item */}
-                                <div className="space-y-2 font-mono text-xs text-gray-900 pt-1">
-                                    {sale.items.map((item) => (
-                                        <div key={item.id}>
-                                            <p className="font-sans font-medium leading-snug">{item.nama_produk}</p>
-                                            <div className="flex justify-between text-gray-600 pt-0.5">
-                                                <span className="w-1/2 text-[11px]">
-                                                    {parseFloat(item.qty)} x {formatRupiah(item.harga_jual)}
-                                                </span>
-                                                <span className="w-1/4 text-right"></span>
-                                                <span className="w-1/4 text-right font-medium text-gray-900">
-                                                    {formatRupiah(item.subtotal)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="my-3 border-b border-dashed border-gray-400"></div>
-
-                                {/* Total */}
-                                <div className="flex justify-between items-baseline py-2 bg-gray-200/50 px-3 rounded">
-                                    <span className="text-sm font-bold tracking-tight">TOTAL AKHIR</span>
-                                    <span className="text-lg font-bold tracking-tight">Rp {formatRupiah(sale.total)}</span>
-                                </div>
-
-                                <div className="my-3 border-b border-dashed border-gray-400"></div>
-
-                                {/* Pembayaran */}
-                                <div className="font-mono text-xs text-gray-800 space-y-1.5">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-500 uppercase">Metode Bayar</span>
-                                        <span className="font-bold uppercase">{sale.payment_method?.nama || sale.metode_bayar}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-500">Bayar</span>
-                                        <span>Rp {formatRupiah(sale.bayar)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-500">Kembalian</span>
-                                        <span>Rp {formatRupiah(sale.kembalian)}</span>
-                                    </div>
-                                </div>
-
-                                <div className="my-4 border-b border-dashed border-gray-400"></div>
-
-                                {/* Footer */}
-                                <div className="text-center space-y-2 pt-1">
-                                    <p className="font-sans font-semibold text-sm">
-                                        {app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda'}
-                                    </p>
-                                    <p className="font-sans text-[11px] text-gray-500 leading-snug">
-                                        Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan.
-                                    </p>
-
-                                    {/* Barcode Palsu */}
-                                    <div className="pt-2 flex flex-col items-center">
-                                        <div className="flex items-end justify-center gap-[2px] h-8 w-48">
-                                            {[...Array(25)].map((_, i) => (
-                                                <span key={i} className="bg-[#1F1D17]" style={{ width: `${Math.random() * 3 + 1}px`, height: '100%' }}></span>
-                                            ))}
-                                        </div>
-                                        <span className="font-mono text-[9px] text-gray-500 tracking-widest mt-1">{sale.no_transaksi}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Efek Gerigi Bawah */}
-                            <div className="w-full h-3 overflow-hidden flex items-start no-print">
-                                <div className="w-full h-2.5 bg-[#FAF9F5] dark:bg-zinc-200 [mask-image:radial-gradient(circle_at_5px_10px,transparent_4px,#FAF9F5_5px)] [mask-size:10px_10px]"></div>
-                            </div>
-                        </div>
                     </div>
 
                     {/* KANAN: Info & Audit */}
@@ -309,6 +187,25 @@ _${app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kam
                                 </div>
                             </div>
                         </div>
+
+                        {sale.items?.some((i: any) => i.is_grosir) && (
+                            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 flex items-start gap-3 shadow-xs">
+                                <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
+                                    <Tags className="size-4" />
+                                </div>
+                                <div className="space-y-0.5">
+                                    <div className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                                        Harga Grosir Diterapkan
+                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-amber-200 text-amber-900 dark:bg-amber-500/30 dark:text-amber-200">
+                                            GROSIR
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 leading-relaxed">
+                                        Transaksi ini mencakup item dengan potongan harga grosir resmi Sartika Motor.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Audit Trail */}
                         <div className="p-5 rounded-xl bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 shadow-sm space-y-4">

@@ -30,7 +30,7 @@ class AuthController extends Controller
         ]);
 
         // Rate limiter pakai email
-        $throttleKey = 'login:' . strtolower($credentials['email']) . '|' . $request->ip();
+        $throttleKey = 'login:'.strtolower($credentials['email']).'|'.$request->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
@@ -71,6 +71,10 @@ class AuthController extends Controller
 
     protected function redirectByRole(): RedirectResponse
     {
+        if (Auth::user()?->role === 'kasir') {
+            return redirect()->route('pos.index');
+        }
+
         return redirect()->intended(route('dashboard'));
     }
 }

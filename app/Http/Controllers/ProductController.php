@@ -205,19 +205,29 @@ class ProductController extends Controller
 
     public function search(Request $request)
     {
-        $keyword = $request->input('q', '');
+        $keyword = trim((string) $request->input('q', ''));
         $kategoriId = $request->input('kategori_id');
 
         $query = Product::aktif();
 
         if (strlen($keyword) >= 2) {
-            $query->cari($keyword);
+            // Mode Pencarian: Tampilkan semua produk yang cocok (termasuk stok 0),
+            // prioritaskan produk dengan stok > 0 di urutan teratas
+            $query->cari($keyword)
+                ->orderByRaw('CASE WHEN stok > 0 THEN 0 ELSE 1 END')
+                ->orderByDesc('id');
         } elseif ($kategoriId) {
-            $query->where('kategori_id', $kategoriId);
+            // Mode Browse Kategori: Hanya tampilkan produk yang stoknya ready
+            $query->where('kategori_id', $kategoriId)
+                ->where('stok', '>', 0)
+                ->orderByDesc('id');
+        } else {
+            // Mode Browse Utama: Hanya tampilkan produk yang stoknya ready
+            $query->where('stok', '>', 0)
+                ->orderByDesc('id');
         }
 
-        $products = $query->orderByDesc('id')
-            ->limit(50)
+        $products = $query->limit(50)
             ->get([
                 'id', 'kode_barang', 'nama', 'gambar', 'stok', 'satuan',
                 'harga_beli', 'harga_jual', 'harga_grosir', 'min_qty_grosir',

@@ -77,11 +77,14 @@ class SaleService
                     );
                 }
 
-                $hargaJual = (int) $product->harga_jual;
+                $hargaNormal = (int) $product->harga_jual;
+                $hargaJual = $hargaNormal;
+                $isGrosir = false;
 
                 // Cek apakah memenuhi syarat harga grosir
                 if ($product->harga_grosir && $product->min_qty_grosir && $qty >= (float) $product->min_qty_grosir) {
                     $hargaJual = (int) $product->harga_grosir;
+                    $isGrosir = true;
                 }
 
                 $subtotal = $hargaJual * $qty;
@@ -91,6 +94,8 @@ class SaleService
                     'product' => $product,
                     'qty' => $qty,
                     'harga_jual' => $hargaJual,
+                    'harga_normal' => $hargaNormal,
+                    'is_grosir' => $isGrosir,
                     'subtotal' => (int) $subtotal,
                 ];
             }
@@ -133,6 +138,8 @@ class SaleService
                     'nama_produk' => $product->nama,           // snapshot
                     'qty' => $item['qty'],
                     'harga_jual' => $item['harga_jual'],       // snapshot
+                    'is_grosir' => $item['is_grosir'],
+                    'harga_normal' => $item['harga_normal'],
                     'subtotal' => $item['subtotal'],
                 ]);
 

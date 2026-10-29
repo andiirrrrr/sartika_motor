@@ -94,6 +94,36 @@ class ReportController extends Controller
             ->groupBy('metode_bayar')
             ->get();
 
+        // 7. Laporan Grosir
+        $grosirItemsQuery = DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->whereBetween('sales.tanggal', [$from.' 00:00:00', $to.' 23:59:59'])
+            ->where('sale_items.is_grosir', true);
+
+        $grosirStats = [
+            'total_transaksi' => Sale::whereBetween('tanggal', [$from.' 00:00:00', $to.' 23:59:59'])
+                ->whereHas('items', fn ($q) => $q->where('is_grosir', true))
+                ->count(),
+            'total_qty' => (float) (clone $grosirItemsQuery)->sum('sale_items.qty'),
+            'total_omzet' => (float) (clone $grosirItemsQuery)->sum('sale_items.subtotal'),
+            'total_potongan' => (float) (clone $grosirItemsQuery)->sum(DB::raw('(sale_items.harga_normal - sale_items.harga_jual) * sale_items.qty')),
+        ];
+
+        $topGrosirProducts = (clone $grosirItemsQuery)
+            ->select([
+                'sale_items.nama_produk',
+                'sale_items.kode_barang',
+                DB::raw('SUM(sale_items.qty) as total_qty'),
+                DB::raw('ROUND(AVG(sale_items.harga_normal)) as avg_harga_normal'),
+                DB::raw('ROUND(AVG(sale_items.harga_jual)) as avg_harga_grosir'),
+                DB::raw('SUM(sale_items.subtotal) as total_omzet'),
+                DB::raw('SUM((sale_items.harga_normal - sale_items.harga_jual) * sale_items.qty) as total_potongan'),
+            ])
+            ->groupBy('sale_items.nama_produk', 'sale_items.kode_barang')
+            ->orderByDesc('total_qty')
+            ->limit(10)
+            ->get();
+
         return Inertia::render('Reports/Index', [
             'from' => $from,
             'to' => $to,
@@ -112,6 +142,8 @@ class ReportController extends Controller
             'topProducts' => $topProducts,
             'categorySales' => $categorySales,
             'paymentMethods' => $paymentMethods,
+            'grosirStats' => $grosirStats,
+            'topGrosirProducts' => $topGrosirProducts,
         ]);
     }
 }

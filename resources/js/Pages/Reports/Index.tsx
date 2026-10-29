@@ -72,6 +72,23 @@ interface PaymentMethod {
     total_revenue: number;
 }
 
+interface GrosirStats {
+    total_transaksi: number;
+    total_qty: number;
+    total_omzet: number;
+    total_potongan: number;
+}
+
+interface TopGrosirProduct {
+    nama_produk: string;
+    kode_barang: string;
+    total_qty: number;
+    avg_harga_normal: number;
+    avg_harga_grosir: number;
+    total_omzet: number;
+    total_potongan: number;
+}
+
 interface Props {
     from: string;
     to: string;
@@ -83,6 +100,8 @@ interface Props {
     topProducts: TopProduct[];
     categorySales: CategorySale[];
     paymentMethods: PaymentMethod[];
+    grosirStats?: GrosirStats;
+    topGrosirProducts?: TopGrosirProduct[];
     stats: {
         omzet: number;
         transaksi: number;
@@ -101,9 +120,10 @@ export default function Index({
         store_address: 'Jl. Raya Motor No. 123',
         store_phone: '0812-3456-7890',
     },
-    topProducts, categorySales, paymentMethods, stats
+    topProducts, categorySales, paymentMethods, stats,
+    grosirStats, topGrosirProducts = []
 }: Props) {
-    const [activeTab, setActiveTab] = useState<'sales' | 'stock'>('sales');
+    const [activeTab, setActiveTab] = useState<'sales' | 'grosir' | 'stock'>('sales');
     const [startDate, setStartDate] = useState(from);
     const [endDate, setEndDate] = useState(to);
     const [periodPreset, setPeriodPreset] = useState<string>('custom');
@@ -526,21 +546,23 @@ export default function Index({
                             <span>Laporan & Pembelian</span>
                             <span>/</span>
                             <span className="font-semibold text-gray-900 dark:text-white">
-                                {activeTab === 'sales' ? 'Analitik Penjualan' : 'Rencana Belanja / Restock'}
+                                {activeTab === 'sales' ? 'Analitik Penjualan' : activeTab === 'grosir' ? 'Laporan Grosir' : 'Rencana Belanja / Restock'}
                             </span>
                         </div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight" style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                            {activeTab === 'sales' ? 'Pusat Analitik & Laporan' : 'Rencana Belanja & Order Supplier'}
+                            {activeTab === 'sales' ? 'Pusat Analitik & Laporan' : activeTab === 'grosir' ? 'Laporan Penjualan Grosir' : 'Rencana Belanja & Order Supplier'}
                         </h1>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             {activeTab === 'sales'
                                 ? 'Pantau performa omzet harian, laba kotor, dan distribusi penjualan seluruh kasir.'
-                                : 'Hitung kebutuhan restock barang, estimasi anggaran belanja, dan kirim pesanan PO langsung ke supplier.'}
+                                : activeTab === 'grosir'
+                                    ? 'Pantau penjualan partai besar/grosir, volume produk, dan total potongan diskon yang diberikan.'
+                                    : 'Hitung kebutuhan restock barang, estimasi anggaran belanja, dan kirim pesanan PO langsung ke supplier.'}
                         </p>
                     </div>
 
                     {/* Toolbar Kanan: Berubah Sesuai Tab Aktif */}
-                    {activeTab === 'sales' ? (
+                    {activeTab !== 'stock' ? (
                         <div className="flex items-center gap-2 flex-wrap">
                             <Select
                                 value={periodPreset}
@@ -630,6 +652,17 @@ export default function Index({
                             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${activeTab === 'sales' ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
                         >
                             <BarChart3 className="size-4" /> Laporan Penjualan
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('grosir')}
+                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${activeTab === 'grosir' ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+                        >
+                            <Tags className="size-4 text-purple-600" /> Laporan Grosir
+                            {grosirStats && grosirStats.total_transaksi > 0 && (
+                                <span className="ml-1.5 px-2 py-0.5 rounded-full text-[11px] bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 font-bold">
+                                    {grosirStats.total_transaksi}
+                                </span>
+                            )}
                         </button>
                         <button
                             onClick={() => setActiveTab('stock')}
@@ -842,6 +875,108 @@ export default function Index({
                                                     <td className="py-3 px-4 text-center">{parseFloat(d.total_item)} unit</td>
                                                     <td className="py-3 px-4 text-right font-semibold">Rp {formatRupiah(d.total_omzet)}</td>
                                                     <td className="py-3 px-4 text-right font-semibold text-green-600 dark:text-green-400">Rp {formatRupiah(d.total_laba)}</td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ================= KONTEN TAB: LAPORAN GROSIR ================= */}
+                {activeTab === 'grosir' && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        {/* 4 KPI Cards Grosir */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="p-5 rounded-xl bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                                <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Omzet Grosir</span>
+                                <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                                    Rp {formatRupiah(grosirStats?.total_omzet || 0)}
+                                </div>
+                                <span className="text-xs text-purple-600 dark:text-purple-400 mt-1 block font-medium">Penjualan Partai / Grosir</span>
+                            </div>
+
+                            <div className="p-5 rounded-xl bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                                <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Total Transaksi Grosir</span>
+                                <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                                    {grosirStats?.total_transaksi || 0}
+                                </div>
+                                <span className="text-xs text-gray-500 mt-1 block font-medium">Struk dengan harga grosir</span>
+                            </div>
+
+                            <div className="p-5 rounded-xl bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                                <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Volume Barang Grosir</span>
+                                <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                                    {parseFloat(String(grosirStats?.total_qty || 0))} pcs
+                                </div>
+                                <span className="text-xs text-gray-500 mt-1 block font-medium">Total unit produk terjual</span>
+                            </div>
+
+                            <div className="p-5 rounded-xl bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                                <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Total Diskon Diberikan</span>
+                                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                                    Rp {formatRupiah(grosirStats?.total_potongan || 0)}
+                                </div>
+                                <span className="text-xs text-gray-500 mt-1 block font-medium">Penghematan harga bagi pembeli</span>
+                            </div>
+                        </div>
+
+                        {/* Tabel Produk Terjual Grosir */}
+                        <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden">
+                            <div className="p-4 border-b border-gray-100 dark:border-zinc-800 flex items-center justify-between">
+                                <div>
+                                    <h3 className="font-bold text-gray-900 dark:text-white text-base">Rekap Produk Terjual Grosir</h3>
+                                    <p className="text-xs text-gray-500">Daftar produk yang terjual dengan skema harga grosir pada rentang tanggal ini.</p>
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse min-w-[750px]">
+                                    <thead>
+                                        <tr className="bg-gray-50 dark:bg-zinc-800/50 text-gray-500 text-[10px] uppercase font-bold tracking-wider">
+                                            <th className="py-3 px-4">Produk</th>
+                                            <th className="py-3 px-4 text-center">Qty Terjual</th>
+                                            <th className="py-3 px-4 text-right">Harga Normal</th>
+                                            <th className="py-3 px-4 text-right">Harga Grosir</th>
+                                            <th className="py-3 px-4 text-right">Diskon / Pcs</th>
+                                            <th className="py-3 px-4 text-right">Total Omzet</th>
+                                            <th className="py-3 px-4 text-right">Total Potongan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 dark:divide-zinc-800 text-xs">
+                                        {(!topGrosirProducts || topGrosirProducts.length === 0) ? (
+                                            <tr>
+                                                <td colSpan={7} className="py-12 text-center text-gray-400">
+                                                    Belum ada transaksi dengan harga grosir pada periode ini.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            topGrosirProducts.map((p, idx) => (
+                                                <tr key={idx} className="hover:bg-gray-50/50 dark:hover:bg-zinc-800/30 transition-colors">
+                                                    <td className="py-3.5 px-4">
+                                                        <div className="font-semibold text-gray-900 dark:text-white">{p.nama_produk}</div>
+                                                        <div className="text-[10px] text-gray-400 font-mono">{p.kode_barang}</div>
+                                                    </td>
+                                                    <td className="py-3.5 px-4 text-center font-bold text-gray-800 dark:text-gray-200">
+                                                        {parseFloat(String(p.total_qty))}
+                                                    </td>
+                                                    <td className="py-3.5 px-4 text-right text-gray-500 line-through">
+                                                        Rp {formatRupiah(Number(p.avg_harga_normal))}
+                                                    </td>
+                                                    <td className="py-3.5 px-4 text-right font-bold text-purple-600 dark:text-purple-400">
+                                                        Rp {formatRupiah(Number(p.avg_harga_grosir))}
+                                                    </td>
+                                                    <td className="py-3.5 px-4 text-right text-emerald-600 font-medium">
+                                                        -Rp {formatRupiah(Number(p.avg_harga_normal) - Number(p.avg_harga_grosir))}
+                                                    </td>
+                                                    <td className="py-3.5 px-4 text-right font-bold text-gray-900 dark:text-white">
+                                                        Rp {formatRupiah(Number(p.total_omzet))}
+                                                    </td>
+                                                    <td className="py-3.5 px-4 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                                                        Rp {formatRupiah(Number(p.total_potongan))}
+                                                    </td>
                                                 </tr>
                                             ))
                                         )}

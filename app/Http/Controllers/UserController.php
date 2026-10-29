@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
@@ -15,7 +15,7 @@ class UserController extends Controller
     {
         return Inertia::render('Users/Index', [
             'users' => User::orderBy('role')->orderBy('nama')->get([
-                'id', 'nama', 'username', 'email', 'role', 'last_login_at'
+                'id', 'nama', 'username', 'email', 'role', 'last_login_at',
             ]),
         ]);
     }
@@ -28,10 +28,11 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email', // Jangan lupa email
             'role' => 'required|in:admin,kasir',
             // Ganti validasi password
-            'password' => ['required', 'string', Password::min(8)->mixedCase()->numbers()->symbols()],
+            'password' => ['required', 'string', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
         ]);
 
         User::create($validated);
+
         return back()->with('success', 'User berhasil ditambahkan.');
     }
 
@@ -43,7 +44,7 @@ class UserController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'role' => 'required|in:admin,kasir',
             // Ganti validasi password
-            'password' => ['nullable', 'string', Password::min(8)->mixedCase()->numbers()->symbols()],
+            'password' => ['nullable', 'string', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
         ]);
 
         if (empty($validated['password'])) {
@@ -51,6 +52,7 @@ class UserController extends Controller
         }
 
         $user->update($validated);
+
         return back()->with('success', 'Data user berhasil diperbarui.');
     }
 

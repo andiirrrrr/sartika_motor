@@ -1,6 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState, useEffect, FormEvent, useRef } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import { formatDotNumber } from '@/lib/utils';
 import { Button } from '@/Components/ui/button';
 import {
     ArrowLeft, Save, Search, Package, Calendar,
@@ -280,9 +281,10 @@ export default function Create({ suppliers, initialProduct }: Props) {
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rp</span>
                                         <input
-                                            type="number"
-                                            value={data.harga_beli}
-                                            onChange={(e) => setData('harga_beli', e.target.value)}
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={formatDotNumber(data.harga_beli)}
+                                            onChange={(e) => setData('harga_beli', e.target.value.replace(/\D/g, ''))}
                                             className="w-full h-14 pl-12 pr-4 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-2xl font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-[#f5b800] outline-none text-right"
                                             placeholder="0"
                                             required

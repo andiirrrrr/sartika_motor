@@ -17,6 +17,10 @@ class EnsureUserHasRole
         }
 
         if (! in_array($user->role, $roles, true)) {
+            if ($user->role === 'kasir') {
+                return redirect()->route('pos.index');
+            }
+
             abort(403, 'Anda tidak memiliki akses ke halaman ini.');
         }
 

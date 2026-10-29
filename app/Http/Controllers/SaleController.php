@@ -18,6 +18,9 @@ class SaleController extends Controller
         // Query Dasar
         $query = Sale::with(['kasir:id,nama', 'paymentMethod:id,nama,tipe'])
             ->withCount('items')
+            ->withExists(['items as has_grosir' => function ($q) {
+                $q->where('is_grosir', true);
+            }])
             ->whereDate('tanggal', '>=', $from)
             ->whereDate('tanggal', '<=', $to);
 

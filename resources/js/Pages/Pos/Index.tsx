@@ -12,6 +12,7 @@ import {
 import { Button } from '@/Components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import ReceiptPreview from '@/Components/ReceiptPreview';
 
 interface Product {
     id: number;
@@ -95,7 +96,7 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
             return;
         }
         setIsClosingShift(true);
-        router.post('/shifts/close', { uang_fisik: Number(uangFisik) }, {
+        router.post('/shifts/close', { uang_fisik: Number(uangFisik.replace(/\D/g, '')) }, {
             onSuccess: () => setShowCloseShift(false),
             onFinish: () => setIsClosingShift(false)
         });
@@ -104,7 +105,7 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
     const calculateDenomTotal = (d: typeof denoms) => {
         const total = (d.d100k * 100000) + (d.d50k * 50000) + (d.d20k * 20000) +
             (d.d10k * 10000) + (d.d5k * 5000) + (d.d2k * 2000) + (d.d1k * 1000);
-        setUangFisik(total.toString());
+        setUangFisik(total > 0 ? new Intl.NumberFormat('id-ID').format(total) : '0');
     };
 
     const handleDenomChange = (key: keyof typeof denoms, val: string) => {
@@ -176,7 +177,7 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
     const numericBayar = Number(bayar.replace(/\D/g, ''));
     const kembalian = Math.max(0, numericBayar - total);
     const expectedCash = activeShift ? (Number(activeShift.modal_awal) + Number(activeShift.penjualan_tunai_sementara || 0)) : 0;
-    const selisih = (Number(uangFisik) || 0) - expectedCash;
+    const selisih = (Number(uangFisik.replace(/\D/g, '')) || 0) - expectedCash;
 
     useEffect(() => {
         searchInputRef.current?.focus();
@@ -317,7 +318,8 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
         });
 
         const itemsList = (lastSale.items || []).map((item: any, idx: number) => {
-            return `${idx + 1}. *${item.nama_produk}*\n   ${item.qty} x Rp ${formatRupiah(item.harga_jual)} = Rp ${formatRupiah(item.subtotal)}`;
+            const grosirTag = item.is_grosir ? ' _[Grosir]_' : '';
+            return `${idx + 1}. *${item.nama_produk}*${grosirTag}\n   ${parseFloat(item.qty)} x Rp ${formatRupiah(item.harga_jual)} = Rp ${formatRupiah(item.subtotal)}`;
         }).join('\n');
 
         const storeName = app_settings?.store_name || 'SARTIKA MOTOR';
@@ -427,12 +429,22 @@ _${app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kam
                         </div>
 
                         <div className="flex items-center justify-between gap-4 pt-2">
-                            <Link
-                                href="/dashboard"
-                                className="flex items-center justify-center px-6 h-12 rounded-xl bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-bold hover:bg-gray-200 transition-colors"
-                            >
-                                Batal
-                            </Link>
+                            {user?.role === 'admin' ? (
+                                <Link
+                                    href="/dashboard"
+                                    className="flex items-center justify-center px-6 h-12 rounded-xl bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-bold hover:bg-gray-200 transition-colors"
+                                >
+                                    Dashboard
+                                </Link>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => router.post('/logout')}
+                                    className="flex items-center justify-center px-6 h-12 rounded-xl bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-bold hover:bg-gray-200 transition-colors"
+                                >
+                                    Keluar
+                                </button>
+                            )}
                             <button
                                 onClick={submitOpenShift}
                                 disabled={processingShift}
@@ -473,7 +485,6 @@ _${app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kam
                                 className="w-full h-14 pl-12 pr-16 rounded-xl bg-gray-100 dark:bg-zinc-900 text-base font-medium outline-none focus:ring-2 focus:ring-[#f5b800] dark:text-white transition-all shadow-inner"
                             />
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                                <span className="px-2 py-1 rounded bg-white dark:bg-zinc-800 text-xs font-bold text-gray-500 shadow-sm">F2</span>
                                 {search && (
                                     <button onClick={() => setSearch('')} className="p-1 rounded hover:bg-gray-200 dark:hover:bg-zinc-700">
                                         <Minus className="size-4 text-gray-500" />
@@ -527,14 +538,27 @@ _${app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kam
 
                             {!isSearching && results.map((p) => {
                                 const stokNum = parseFloat(p.stok);
+                                const isOutOfStock = stokNum <= 0;
+                                const hasGrosir = Boolean(p.harga_grosir && p.harga_grosir > 0 && p.min_qty_grosir && parseFloat(p.min_qty_grosir) > 0);
+                                const minQtyGrosir = hasGrosir ? parseFloat(p.min_qty_grosir!) : 0;
+
                                 return (
                                     <div
                                         key={p.id}
                                         onClick={() => handleTambahKeKeranjang(p)}
-                                        className="group relative bg-white dark:bg-[#232019] rounded-2xl p-3 flex flex-col justify-between shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer min-h-45 border border-gray-100 dark:border-zinc-800"
+                                        className={cn(
+                                            "group relative rounded-2xl p-3 flex flex-col justify-between shadow-sm transition-all min-h-45 border",
+                                            isOutOfStock
+                                                ? "bg-gray-50/70 dark:bg-zinc-900/40 border-gray-200/80 dark:border-zinc-800 opacity-60 cursor-not-allowed"
+                                                : "bg-white dark:bg-[#232019] border-gray-100 dark:border-zinc-800 hover:shadow-md active:scale-[0.98] cursor-pointer"
+                                        )}
+                                        title={isOutOfStock ? `Stok ${p.nama} habis` : undefined}
                                     >
                                         {/* GAMBAR PRODUK */}
-                                        <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-zinc-800 mb-2 flex items-center justify-center">
+                                        <div className={cn(
+                                            "relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-zinc-800 mb-2 flex items-center justify-center",
+                                            isOutOfStock && "grayscale opacity-80"
+                                        )}>
                                             {p.gambar ? (
                                                 <img src={`/storage/${p.gambar}`} alt={p.nama} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                                             ) : (
@@ -544,25 +568,53 @@ _${app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kam
                                             )}
                                             <span className={cn(
                                                 "absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm",
-                                                stokNum <= 0 ? "bg-red-100 text-red-700" :
-                                                    stokNum <= 5 ? "bg-orange-100 text-orange-700" :
-                                                        "bg-white/90 text-gray-700"
+                                                isOutOfStock
+                                                    ? "bg-red-600 text-white font-extrabold tracking-wide"
+                                                    : stokNum <= 5
+                                                        ? "bg-orange-100 text-orange-700"
+                                                        : "bg-white/90 text-gray-700 dark:bg-zinc-800/90 dark:text-gray-300"
                                             )}>
-                                                Sisa {stokNum} {p.satuan}
+                                                {isOutOfStock ? "Stok Habis" : `Sisa ${stokNum} ${p.satuan}`}
                                             </span>
+
+                                            {hasGrosir && (
+                                                <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm bg-[#f5b800] text-gray-900 font-extrabold flex items-center gap-1">
+                                                    Grosir ≥{minQtyGrosir}
+                                                </span>
+                                            )}
                                         </div>
 
                                         <div className="flex flex-col flex-1">
                                             <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-semibold">{p.kode_barang}</span>
-                                            <h3 className="text-sm font-bold text-gray-900 dark:text-white line-clamp-2 mt-0.5 leading-snug">{p.nama}</h3>
+                                            <h3 className={cn(
+                                                "text-sm font-bold line-clamp-2 mt-0.5 leading-snug",
+                                                isOutOfStock ? "text-gray-600 dark:text-gray-400" : "text-gray-900 dark:text-white"
+                                            )}>
+                                                {p.nama}
+                                            </h3>
                                         </div>
 
                                         <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100 dark:border-zinc-800">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] text-gray-500">Harga</span>
-                                                <span className="text-sm font-bold text-gray-900 dark:text-white">Rp {formatRupiah(p.harga_jual)}</span>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="text-[10px] text-gray-500">Harga Ecer</span>
+                                                <span className={cn(
+                                                    "text-sm font-bold leading-tight",
+                                                    isOutOfStock ? "text-gray-500 dark:text-gray-400" : "text-gray-900 dark:text-white"
+                                                )}>
+                                                    Rp {formatRupiah(p.harga_jual)}
+                                                </span>
+                                                {hasGrosir && (
+                                                    <div className="text-[10.5px] font-semibold text-amber-700 dark:text-amber-400 mt-0.5 truncate">
+                                                        Grosir: <strong className="font-bold">Rp {formatRupiah(p.harga_grosir!)}</strong>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="w-8 h-8 rounded-lg bg-[#f5b800] flex items-center justify-center text-gray-900 shadow-sm group-hover:scale-110 transition-transform">
+                                            <div className={cn(
+                                                "w-8 h-8 rounded-lg flex items-center justify-center shadow-sm transition-transform shrink-0 ml-2",
+                                                isOutOfStock
+                                                    ? "bg-gray-200 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500 cursor-not-allowed"
+                                                    : "bg-[#f5b800] text-gray-900 group-hover:scale-110"
+                                            )}>
                                                 <Plus className="size-5" />
                                             </div>
                                         </div>
@@ -600,51 +652,91 @@ _${app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kam
                                 </div>
                             </div>
                         ) : (
-                            items.map((item) => (
-                                <div key={item.product_id} className="bg-gray-50 dark:bg-[#232019] p-3 rounded-xl flex flex-col gap-2 shadow-sm border border-gray-100 dark:border-zinc-800/50">
-                                    <div className="flex justify-between items-start gap-2">
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{item.nama}</p>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                <span className="text-xs font-medium text-[#f5b800]">Rp {formatRupiah(getItemPrice(item))}</span>
-                                                <span className="text-xs text-gray-500">x {item.qty}</span>
+                            items.map((item) => {
+                                const hasGrosir = Boolean(item.harga_grosir && item.harga_grosir > 0 && item.min_qty_grosir && item.min_qty_grosir > 0);
+                                const isGrosir = Boolean(hasGrosir && item.qty >= item.min_qty_grosir!);
+                                const sisaQtyKeGrosir = hasGrosir && !isGrosir ? (item.min_qty_grosir! - item.qty) : 0;
+                                // Hanya muncul saat mendekati batas grosir (misal: min 5, baru muncul di qty 3 ke atas / sisa <= 2)
+                                const isMendekatiGrosir = hasGrosir && !isGrosir && (sisaQtyKeGrosir <= 2 || item.qty >= Math.ceil(item.min_qty_grosir! * 0.6));
+
+                                return (
+                                    <div key={item.product_id} className="bg-gray-50 dark:bg-[#232019] p-3 rounded-xl flex flex-col gap-2 shadow-sm border border-gray-100 dark:border-zinc-800/50">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{item.nama}</p>
+                                                    {isGrosir && (
+                                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30">
+                                                            GROSIR
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className="text-xs font-medium text-[#f5b800]">Rp {formatRupiah(getItemPrice(item))}</span>
+                                                    {isGrosir && (
+                                                        <span className="text-[10px] text-gray-400 line-through">
+                                                            Rp {formatRupiah(item.harga_jual)}
+                                                        </span>
+                                                    )}
+                                                    <span className="text-xs text-gray-500">x {item.qty}</span>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => removeItem(item.product_id)} className="text-gray-400 hover:text-red-500 p-1">
+                                                <Trash2 className="size-4" />
+                                            </button>
+                                        </div>
+
+                                        <div className="flex items-center justify-between pt-1">
+                                            <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 rounded-lg p-0.5 border border-gray-200 dark:border-zinc-700">
+                                                <button onClick={() => updateQty(item.product_id, item.qty - 1)} className="w-8 h-8 rounded-md hover:bg-gray-100 dark:hover:bg-zinc-800 flex items-center justify-center">
+                                                    <Minus className="size-3.5 text-gray-600 dark:text-gray-400" />
+                                                </button>
+                                                <span className="w-8 text-center font-bold text-sm dark:text-white">{item.qty}</span>
+                                                <button
+                                                    onClick={() => {
+                                                        if (item.qty >= item.stok_tersedia) {
+                                                            toast.warning(`Maksimal stok ${item.nama} adalah ${item.stok_tersedia}`);
+                                                        } else {
+                                                            updateQty(item.product_id, item.qty + 1);
+                                                        }
+                                                    }}
+                                                    className="w-8 h-8 rounded-md hover:bg-gray-100 dark:hover:bg-zinc-800 flex items-center justify-center"
+                                                >
+                                                    <Plus className="size-3.5 text-gray-600 dark:text-gray-400" />
+                                                </button>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-[10px] text-gray-500 block">Subtotal</span>
+                                                <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                                    Rp {formatRupiah(getItemPrice(item) * item.qty)}
+                                                </span>
                                             </div>
                                         </div>
-                                        <button onClick={() => removeItem(item.product_id)} className="text-gray-400 hover:text-red-500 p-1">
-                                            <Trash2 className="size-4" />
-                                        </button>
-                                    </div>
 
-                                    <div className="flex items-center justify-between pt-1">
-                                        <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 rounded-lg p-0.5 border border-gray-200 dark:border-zinc-700">
-                                            <button onClick={() => updateQty(item.product_id, item.qty - 1)} className="w-8 h-8 rounded-md hover:bg-gray-100 dark:hover:bg-zinc-800 flex items-center justify-center">
-                                                <Minus className="size-3.5 text-gray-600 dark:text-gray-400" />
-                                            </button>
-                                            <span className="w-8 text-center font-bold text-sm dark:text-white">{item.qty}</span>
-                                            <button
-                                                onClick={() => {
-                                                    if (item.qty >= item.stok_tersedia) {
-                                                        toast.warning(`Maksimal stok ${item.nama} adalah ${item.stok_tersedia}`);
-                                                    } else {
-                                                        updateQty(item.product_id, item.qty + 1);
-                                                    }
-                                                }}
-                                                className="w-8 h-8 rounded-md hover:bg-gray-100 dark:hover:bg-zinc-800 flex items-center justify-center"
-                                            >
-                                                <Plus className="size-3.5 text-gray-600 dark:text-gray-400" />
-                                            </button>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-[10px] text-gray-500 block">Subtotal</span>
-                                            <span className="text-sm font-bold text-gray-900 dark:text-white">
-                                                Rp {formatRupiah(getItemPrice(item) * item.qty)}
-                                            </span>
-                                        </div>
+                                        {/* Keterangan & Bantuan Upsell Grosir untuk Kasir (Hanya saat mendekati batas grosir) */}
+                                        {isMendekatiGrosir && (
+                                            <div className="mt-1 flex items-center justify-between bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-lg px-2.5 py-1.5 text-[11px] text-amber-900 dark:text-amber-300">
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    <span className="truncate">
+                                                        Tambah <strong>{sisaQtyKeGrosir} lagi</strong> dapat harga grosir <strong>Rp {formatRupiah(item.harga_grosir!)}</strong>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Indikator Hemat Saat Grosir Aktif */}
+                                        {isGrosir && (
+                                            <div className="mt-0.5 flex items-center justify-between text-[10.5px] font-medium text-emerald-600 dark:text-emerald-400 px-1">
+                                                <span>Harga grosir aktif</span>
+                                                <span className="font-semibold">Hemat Rp {formatRupiah((item.harga_jual - item.harga_grosir!) * item.qty)}</span>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            ))
-                        )}
+                                );
+                            }))
+                        }
                     </div>
+
 
                     {/* Summary & Payment Action */}
                     <div className="pt-4 border-t border-gray-100 dark:border-zinc-800 space-y-3">
@@ -776,16 +868,16 @@ _${app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kam
 
                                     {/* Quick Chips */}
                                     <div className="flex flex-wrap gap-2">
-                                        <button onClick={() => setBayar(total.toString())} className="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 hover:bg-gray-100 text-sm font-semibold shadow-sm border border-gray-200">
+                                        <button onClick={() => setBayar(new Intl.NumberFormat('id-ID').format(total))} className="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 hover:bg-gray-100 text-sm font-semibold shadow-sm border border-gray-200">
                                             Uang Pas (Rp {formatRupiah(total)})
                                         </button>
-                                        <button onClick={() => setBayar((numericBayar + 50000).toString())} className="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 hover:bg-gray-100 text-sm font-semibold shadow-sm border border-gray-200">
+                                        <button onClick={() => setBayar(new Intl.NumberFormat('id-ID').format(numericBayar + 50000))} className="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 hover:bg-gray-100 text-sm font-semibold shadow-sm border border-gray-200">
                                             +Rp 50.000
                                         </button>
-                                        <button onClick={() => setBayar('100000')} className="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 hover:bg-gray-100 text-sm font-semibold shadow-sm border border-gray-200">
+                                        <button onClick={() => setBayar('100.000')} className="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 hover:bg-gray-100 text-sm font-semibold shadow-sm border border-gray-200">
                                             Rp 100.000
                                         </button>
-                                        <button onClick={() => setBayar('200000')} className="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 hover:bg-gray-100 text-sm font-semibold shadow-sm border border-gray-200">
+                                        <button onClick={() => setBayar('200.000')} className="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 hover:bg-gray-100 text-sm font-semibold shadow-sm border border-gray-200">
                                             Rp 200.000
                                         </button>
                                     </div>
@@ -1083,78 +1175,10 @@ _${app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kam
                         </div>
 
                         {/* Struk Kertas Thermal */}
-                        <div className="w-full bg-white text-gray-900 shadow-2xl relative">
-                            {/* Efek Gerigi Atas (SVG) */}
-                            <div className="w-full h-3.5 overflow-hidden -mb-px">
-                                <svg className="w-full h-full fill-white" preserveAspectRatio="none" viewBox="0 0 400 14">
-                                    <polygon points="0,14 10,0 20,14 30,0 40,14 50,0 60,14 70,0 80,14 90,0 100,14 110,0 120,14 130,0 140,14 150,0 160,14 170,0 180,14 190,0 200,14 210,0 220,14 230,0 240,14 250,0 260,14 270,0 280,14 290,0 300,14 310,0 320,14 330,0 340,14 350,0 360,14 370,0 380,14 390,0 400,14"></polygon>
-                                </svg>
-                            </div>
-
-                            <div id="print-section" className="px-6 py-5 flex flex-col font-mono text-sm relative">
-                                <div className="text-center pb-4 border-b-2 border-dashed border-gray-300">
-                                    <h2 className="text-lg font-bold uppercase">{app_settings?.store_name || 'SARTIKA MOTOR'}</h2>
-                                    <p className="text-xs text-gray-600 mt-1">{app_settings?.store_address}</p>
-                                    <p className="text-xs text-gray-600">Telp: {app_settings?.store_phone}</p>
-                                </div>
-
-                                <div className="py-3 flex flex-col gap-1 border-b border-dashed border-gray-300 text-xs">
-                                    <div className="flex justify-between"><span className="text-gray-500">No. Struk</span><span className="font-bold">{lastSale.no_transaksi}</span></div>
-                                    <div className="flex justify-between"><span className="text-gray-500">Kasir</span><span>{lastSale.kasir?.nama}</span></div>
-                                    <div className="flex justify-between"><span className="text-gray-500">Pelanggan</span><span>{lastSale.nama_pelanggan || 'Pelanggan Umum'}</span></div>
-                                    <div className="flex justify-between"><span className="text-gray-500">Waktu</span><span>{new Date(lastSale.tanggal).toLocaleString('id-ID')}</span></div>
-                                </div>
-
-                                <div className="py-3 flex flex-col gap-2 border-b border-dashed border-gray-300 text-xs">
-                                    {lastSale.items.map((item: any) => (
-                                        <div key={item.id} className="flex flex-col gap-0.5">
-                                            <div className="flex justify-between font-medium">
-                                                <span>{item.nama_produk}</span>
-                                                <span>{formatRupiah(item.subtotal)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-gray-500">
-                                                <span>{item.qty} x {formatRupiah(item.harga_jual)}</span>
-                                                <span>{item.kode_barang}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="py-3 flex flex-col gap-1 border-b-2 border-dashed border-gray-300 text-xs">
-                                    <div className="flex justify-between font-bold text-sm">
-                                        <span>TOTAL AKHIR</span>
-                                        <span>Rp {formatRupiah(lastSale.total)}</span>
-                                    </div>
-                                    <div className="flex justify-between mt-1 text-gray-600">
-                                        <span>BAYAR ({lastSale.payment_method?.nama || lastSale.metode_bayar})</span>
-                                        <span>Rp {formatRupiah(lastSale.bayar)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-gray-600">
-                                        <span>KEMBALI</span>
-                                        <span>Rp {formatRupiah(lastSale.kembalian)}</span>
-                                    </div>
-                                </div>
-
-                                <div className="pt-4 pb-2 flex flex-col items-center gap-2">
-                                    <div className="p-1 bg-white border-2 border-gray-200 rounded">
-                                        <div className="w-20 h-20 bg-[url('https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=Sample')] bg-cover opacity-50"></div>
-                                    </div>
-                                    <p className="text-[10px] text-center text-gray-500 max-w-50">
-                                        {app_settings?.receipt_footer}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Efek Gerigi Bawah (SVG) */}
-                            <div className="w-full h-3.5 overflow-hidden -mt-px">
-                                <svg className="w-full h-full fill-white" preserveAspectRatio="none" viewBox="0 0 400 14">
-                                    <polygon points="0,0 10,14 20,0 30,14 40,0 50,14 60,0 70,14 80,0 90,14 100,0 110,14 120,0 130,14 140,0 150,14 160,0 170,14 180,0 190,14 200,0 210,14 220,0 230,14 240,0 250,14 260,0 270,14 280,0 290,14 300,0 310,14 320,0 330,14 340,0 350,14 360,0 370,14 380,0 390,14 400,0"></polygon>
-                                </svg>
-                            </div>
-                        </div>
+                        <ReceiptPreview sale={lastSale} appSettings={app_settings} />
 
                         {/* Tombol Aksi */}
-                        <div className="w-full flex flex-col gap-2 mt-4 no-print">
+                        <div className="w-full max-w-[320px] flex flex-col gap-2 mt-4 no-print">
                             <Button onClick={() => window.print()} className="w-full h-12 bg-[#f5b800] hover:bg-[#e0a800] text-gray-900 font-bold rounded-xl shadow-lg">
                                 <Printer className="size-5 mr-2" /> Cetak Struk
                             </Button>
@@ -1220,13 +1244,17 @@ _${app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kam
                                 <div className="relative flex items-center">
                                     <span className="absolute left-4 text-gray-500 font-bold">Rp</span>
                                     <input
-                                        type="number"
+                                        type="text"
+                                        inputMode="numeric"
                                         value={uangFisik}
-                                        onChange={(e) => setUangFisik(e.target.value)}
-                                        className="w-full h-14 pl-12 pr-4 rounded-xl bg-white dark:bg-zinc-950 text-xl font-bold text-gray-900 dark:text-white border-2 border-[#f5b800] outline-none"
+                                        onChange={(e) => {
+                                            const raw = e.target.value.replace(/\D/g, '');
+                                            setUangFisik(raw ? new Intl.NumberFormat('id-ID').format(Number(raw)) : '');
+                                        }}
+                                        className="w-full h-14 pl-12 pr-32 rounded-xl bg-white dark:bg-zinc-950 text-xl font-bold text-gray-900 dark:text-white border-2 border-[#f5b800] outline-none"
                                         placeholder="0"
                                     />
-                                    <button onClick={() => setUangFisik(expectedCash.toString())} className="absolute right-3 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-zinc-800 text-xs font-semibold">
+                                    <button type="button" onClick={() => setUangFisik(new Intl.NumberFormat('id-ID').format(expectedCash))} className="absolute right-3 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-zinc-800 text-xs font-semibold hover:bg-gray-200">
                                         Sesuai Sistem
                                     </button>
                                 </div>

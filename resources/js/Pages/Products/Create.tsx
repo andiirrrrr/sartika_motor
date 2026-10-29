@@ -4,6 +4,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, Calculator, Image as ImageIcon, Barcode, Tag, Layers, X } from 'lucide-react';
 import { Select } from '@/Components/ui/select';
+import { formatDotNumber } from '@/lib/utils';
 
 interface Props {
     categories: { id: number; nama: string }[];
@@ -217,8 +218,9 @@ export default function Create({ categories }: Props) {
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">Rp</span>
                                     <input
-                                        type="number"
-                                        value={data.harga_beli}
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={formatDotNumber(data.harga_beli)}
                                         onChange={(e) => handleHargaBeliChange(e.target.value)}
                                         className="w-full h-10 pl-9 pr-3 rounded-lg bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 text-sm font-bold text-right focus:ring-2 focus:ring-[#f5b800] outline-none"
                                         placeholder="0"
@@ -244,8 +246,9 @@ export default function Create({ categories }: Props) {
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">Rp</span>
                                     <input
-                                        type="number"
-                                        value={data.harga_jual}
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={formatDotNumber(data.harga_jual)}
                                         onChange={(e) => handleHargaJualChange(e.target.value)}
                                         className="w-full h-10 pl-9 pr-3 rounded-xl bg-white dark:bg-zinc-900 border-2 border-[#f5b800] text-sm font-bold text-right focus:ring-2 focus:ring-[#f5b800] outline-none"
                                         placeholder="0"
@@ -260,9 +263,10 @@ export default function Create({ categories }: Props) {
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Harga Grosir (Opsional)</label>
                                 <input
-                                    type="number"
-                                    value={data.harga_grosir}
-                                    onChange={(e) => setData('harga_grosir', e.target.value)}
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={formatDotNumber(data.harga_grosir)}
+                                    onChange={(e) => setData('harga_grosir', e.target.value.replace(/\D/g, ''))}
                                     className="w-full h-10 px-3 rounded-lg bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none"
                                     placeholder="Kosongkan jika tidak ada"
                                 />

@@ -69,7 +69,7 @@ export default function Sidebar({ isCollapsed, toggleCollapse }: Props) {
                             className={cn(
                                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                                 isActive
-                                    ? 'bg-primary text-primary-foreground'
+                                    ? 'bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30'
                                     : 'text-gray-700 hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-zinc-900',
                                 isCollapsed && 'justify-center px-0'
                             )}
