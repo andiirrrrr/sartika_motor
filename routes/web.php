@@ -41,9 +41,13 @@ Route::middleware('guest')->group(function () {
 
     // Rute Lupa Password
     Route::get('/forgot-password', [PasswordController::class, 'showForgotForm'])->name('password.request');
-    Route::post('/forgot-password', [PasswordController::class, 'sendResetLink'])->name('password.email');
+    Route::post('/forgot-password', [PasswordController::class, 'sendResetLink'])
+        ->middleware('throttle:5,1')
+        ->name('password.email');
     Route::get('/reset-password/{token}', [PasswordController::class, 'showResetForm'])->name('password.reset');
-    Route::post('/reset-password', [PasswordController::class, 'resetPassword'])->name('password.update');
+    Route::post('/reset-password', [PasswordController::class, 'resetPassword'])
+        ->middleware('throttle:5,1')
+        ->name('password.update');
 });
 
 // Logout
@@ -71,7 +75,7 @@ Route::middleware('auth')->group(function () {
             return $query;
         };
 
-        $salesQuery = $applyPeriod(Sale::query());
+        $salesQuery = $applyPeriod(Sale::where('status', '!=', 'void'));
 
         $omzet = $salesQuery->sum('total');
         $transaksi = $salesQuery->count();
@@ -82,7 +86,7 @@ Route::middleware('auth')->group(function () {
             ->get(['id', 'no_transaksi', 'tanggal', 'total', 'metode_bayar', 'kasir_id']);
 
         // Omzet periode sebelumnya, untuk persentase pertumbuhan
-        $prevQuery = Sale::query();
+        $prevQuery = Sale::where('status', '!=', 'void');
         if ($period === 'today') {
             $prevQuery->whereDate('tanggal', now()->subDay()->toDateString());
         } elseif ($period === '7days') {
@@ -124,7 +128,10 @@ Route::middleware('auth')->group(function () {
         // Produk terlaris (SESUAIKAN nama tabel & kolom, lihat catatan di bawah)
         $topProducts = $applyPeriod(
             DB::table('sale_items')
-                ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                ->join('sales', function ($join) {
+                    $join->on('sales.id', '=', 'sale_items.sale_id')
+                        ->where('sales.status', '!=', 'void');
+                })
                 ->join('products', 'products.id', '=', 'sale_items.product_id')
         )
             ->selectRaw('products.nama as nama_produk, SUM(sale_items.qty) as total_qty, SUM(sale_items.subtotal) as total_revenue')
@@ -171,6 +178,7 @@ Route::middleware('auth')->group(function () {
     // Shift Kasir
     Route::post('/shifts/open', [ShiftController::class, 'open'])->name('shifts.open');
     Route::post('/shifts/close', [ShiftController::class, 'close'])->name('shifts.close');
+    Route::post('/shifts/{shift}/cash-movement', [ShiftController::class, 'storeCashMovement'])->name('shifts.cash-movement');
 
     // Admin only
     Route::middleware('role:admin')->group(function () {
@@ -200,6 +208,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/categories/bulk-delete', [CategoryController::class, 'bulkDestroy'])->name('categories.bulk-destroy');
         // shift
         Route::get('/shifts', [ShiftController::class, 'index'])->name('shifts.index');
+        Route::post('/shifts/{shift}/force-close', [ShiftController::class, 'forceClose'])->name('shifts.force-close');
         // Manajemen User
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
@@ -208,7 +217,9 @@ Route::middleware('auth')->group(function () {
         // Riwayat Transaksi
         Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
         Route::get('/sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
+        Route::post('/sales/{sale}/void', [SaleController::class, 'void'])->name('sales.void');
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
         // Pengaturan
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');

@@ -269,7 +269,7 @@ export default function AdminLayout({ children }: Props) {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-xs font-bold text-gray-900 dark:text-white truncate">{user?.nama}</div>
-                                                <div className="text-[10px] text-gray-500 truncate">@{user?.username}</div>
+                                                <div className="text-[10px] text-gray-500 truncate">{user?.email || ''}</div>
                                             </div>
                                             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#f5b800]/20 text-amber-800 dark:text-[#f5b800] uppercase">
                                                 {user?.role}
@@ -349,7 +349,7 @@ export default function AdminLayout({ children }: Props) {
                                 Akhiri Sesi Login?
                             </h2>
                             <p className="text-sm text-gray-500 leading-relaxed">
-                                Apakah Anda yakin ingin keluar dari sistem? Anda harus memasukkan username dan password kembali untuk masuk.
+                                Apakah Anda yakin ingin keluar dari sistem? Anda harus memasukkan email dan password kembali untuk masuk.
                             </p>
                         </div>
                         <div className="bg-gray-50 dark:bg-zinc-900 rounded-xl p-3 flex items-center gap-3 border border-gray-100 dark:border-zinc-800">

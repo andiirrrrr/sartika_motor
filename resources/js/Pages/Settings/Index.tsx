@@ -15,6 +15,7 @@ interface Props {
         store_address: string;
         store_phone: string;
         receipt_footer: string;
+        receipt_paper_size?: string;
     };
     user: {
         nama: string;
@@ -37,6 +38,7 @@ export default function Index({ settings, user }: Props) {
         store_address: settings.store_address,
         store_phone: settings.store_phone,
         receipt_footer: settings.receipt_footer,
+        receipt_paper_size: settings.receipt_paper_size || '80mm',
     });
 
     // Form 2: Profil Admin
@@ -61,8 +63,7 @@ export default function Index({ settings, user }: Props) {
     const submitStore = (e: FormEvent) => {
         e.preventDefault();
         storeForm.put('/settings', {
-            onSuccess: () => toast.success('Informasi toko berhasil disimpan'),
-            preserveScroll: true,
+                        preserveScroll: true,
         });
     };
 
@@ -71,8 +72,7 @@ export default function Index({ settings, user }: Props) {
         profileForm.put('/settings/profile', {
             onSuccess: () => {
                 profileForm.reset('password', 'password_confirmation');
-                toast.success('Profil admin berhasil diperbarui');
-            },
+                            },
             preserveScroll: true,
         });
     };
@@ -163,16 +163,38 @@ export default function Index({ settings, user }: Props) {
                                         rows={3}
                                     />
                                 </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Ukuran Kertas Thermal Struk</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => storeForm.setData('receipt_paper_size', '58mm')}
+                                            className={`p-3 rounded-xl border text-left transition-all ${storeForm.data.receipt_paper_size === '58mm' ? 'border-[#f5b800] bg-[#f5b800]/10 text-gray-900 dark:text-white font-bold' : 'border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-gray-400'}`}
+                                        >
+                                            <div className="text-sm">58mm (Kecil / Mobile)</div>
+                                            <div className="text-xs text-gray-500 font-normal mt-0.5">Lebar kertas ~58mm standar kasir kecil</div>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => storeForm.setData('receipt_paper_size', '80mm')}
+                                            className={`p-3 rounded-xl border text-left transition-all ${storeForm.data.receipt_paper_size === '80mm' ? 'border-[#f5b800] bg-[#f5b800]/10 text-gray-900 dark:text-white font-bold' : 'border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-gray-400'}`}
+                                        >
+                                            <div className="text-sm">80mm (Standar / Desktop)</div>
+                                            <div className="text-xs text-gray-500 font-normal mt-0.5">Lebar kertas ~80mm struk penuh</div>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* LIVE PREVIEW STRUK */}
                             <div className="mt-6 pt-6 border-t border-gray-100 dark:border-zinc-800">
                                 <div className="flex items-center justify-between mb-3">
                                     <span className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                        <Printer className="size-4 text-[#f5b800]" /> Simulasi Struk Thermal 80mm
+                                        <Printer className="size-4 text-[#f5b800]" /> Simulasi Struk Thermal {storeForm.data.receipt_paper_size}
                                     </span>
                                 </div>
-                                <div className="bg-[#FAF9F5] p-5 rounded-lg border border-gray-200 shadow-inner font-mono text-[11px] leading-snug text-gray-800 space-y-2">
+                                <div className={`bg-[#FAF9F5] p-5 rounded-lg border border-gray-200 shadow-inner font-mono leading-snug text-gray-800 space-y-2 transition-all ${storeForm.data.receipt_paper_size === '58mm' ? 'max-w-[240px] mx-auto text-[10px]' : 'max-w-[340px] mx-auto text-[11px]'}`}>
                                     <div className="text-center space-y-0.5 pb-2">
                                         <p className="font-bold text-[13px] uppercase">{storeForm.data.store_name || 'NAMA TOKO'}</p>
                                         <p className="text-[10px] line-clamp-2">{storeForm.data.store_address || 'Alamat Toko'}</p>
@@ -229,27 +251,17 @@ export default function Index({ settings, user }: Props) {
                                 {profileForm.errors.nama && <p className="text-xs text-red-500 mt-1">{profileForm.errors.nama}</p>}
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username *</label>
-                                    <input
-                                        type="text"
-                                        value={profileForm.data.username}
-                                        onChange={(e) => profileForm.setData('username', e.target.value)}
-                                        className="w-full h-11 px-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email *</label>
-                                    <input
-                                        type="email"
-                                        value={profileForm.data.email}
-                                        onChange={(e) => profileForm.setData('email', e.target.value)}
-                                        className="w-full h-11 px-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none"
-                                        required
-                                    />
-                                </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Akun (Digunakan untuk Login) *</label>
+                                <input
+                                    type="email"
+                                    value={profileForm.data.email}
+                                    onChange={(e) => profileForm.setData('email', e.target.value)}
+                                    className="w-full h-11 px-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none"
+                                    placeholder="nama@email.com"
+                                    required
+                                />
+                                {profileForm.errors.email && <p className="text-xs text-red-500 mt-1">{profileForm.errors.email}</p>}
                             </div>
 
                             <div className="pt-4 border-t border-gray-100 dark:border-zinc-800">
@@ -328,66 +340,6 @@ export default function Index({ settings, user }: Props) {
                                 </Button>
                             </div>
                         </form>
-
-                        {/* HARDWARE SETTINGS (UI Only) */}
-                        <div className="bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 rounded-2xl p-6 shadow-sm space-y-4">
-                            <div className="flex items-center gap-3 border-b border-gray-100 dark:border-zinc-800 pb-4">
-                                <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-zinc-800 flex items-center justify-center text-[#f5b800]">
-                                    <Monitor className="size-5" />
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Preferensi Perangkat</h2>
-                                    <p className="text-xs text-gray-500">Pengaturan printer & laci kasir.</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Mode Printer Default</label>
-                                    <Select
-                                        value={printerMode}
-                                        onChange={setPrinterMode}
-                                        options={[
-                                            {
-                                                value: '80mm',
-                                                label: 'Thermal Printer 80mm (USB / Bluetooth)',
-                                                description: 'Ukuran standar cetak struk kasir toko (rekomendasi)',
-                                                icon: Printer,
-                                            },
-                                            {
-                                                value: '58mm',
-                                                label: 'Thermal Printer 58mm (Mini)',
-                                                description: 'Ukuran kecil / portable mobile printer',
-                                                icon: Printer,
-                                            },
-                                        ]}
-                                        icon={Printer}
-                                    />
-                                </div>
-
-                                <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-zinc-800/50 border border-gray-100 dark:border-zinc-800">
-                                    <div>
-                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Auto-Cut Kertas</p>
-                                        <p className="text-[10px] text-gray-500">Potong otomatis saat transaksi</p>
-                                    </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={autoCut} onChange={() => setAutoCut(!autoCut)} className="sr-only peer" />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#f5b800]"></div>
-                                    </label>
-                                </div>
-
-                                <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-zinc-800/50 border border-gray-100 dark:border-zinc-800">
-                                    <div>
-                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Buka Laci Kasir</p>
-                                        <p className="text-[10px] text-gray-500">Sinyal otomatis saat bayar tunai</p>
-                                    </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={cashDrawer} onChange={() => setCashDrawer(!cashDrawer)} className="sr-only peer" />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#f5b800]"></div>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
 
                     </div>
                 </div>

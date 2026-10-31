@@ -8,6 +8,7 @@ export default function Login() {
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
+        remember: false,
     });
 
     const submit = (e: FormEvent) => {
@@ -102,15 +103,7 @@ export default function Login() {
 
                             {/* Password */}
                             <div className="space-y-1.5">
-                                <div className="flex items-center justify-between">
-                                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Kata Sandi</label>
-                                    <Link
-                                        href="/forgot-password"
-                                        className="text-xs font-medium text-gray-500 hover:text-[#d9a000] transition-colors"
-                                    >
-                                        Lupa sandi?
-                                    </Link>
-                                </div>
+                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Kata Sandi</label>
                                 <div className={inputWrapper}>
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                         <Lock className="text-gray-400 size-4" />
@@ -133,6 +126,25 @@ export default function Login() {
                                     </button>
                                 </div>
                                 {errors.password && <p className="text-xs text-red-600">{errors.password}</p>}
+                            </div>
+
+                            {/* Ingatkan Saya & Lupa Sandi */}
+                            <div className="flex items-center justify-between pt-1">
+                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={data.remember}
+                                        onChange={(e) => setData('remember', e.target.checked)}
+                                        className="w-4 h-4 rounded text-[#f5b800] focus:ring-[#f5b800] border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 accent-[#f5b800]"
+                                    />
+                                    <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">Ingatkan saya</span>
+                                </label>
+                                <Link
+                                    href="/forgot-password"
+                                    className="text-xs font-medium text-gray-500 hover:text-[#d9a000] transition-colors"
+                                >
+                                    Lupa sandi?
+                                </Link>
                             </div>
 
                             {/* Submit */}

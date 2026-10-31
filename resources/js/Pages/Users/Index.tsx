@@ -60,16 +60,14 @@ export default function Index({ users }: Props) {
             put(`/users/${editingId}`, {
                 onSuccess: () => {
                     cancelEdit();
-                    toast.success('Data user berhasil diperbarui');
-                },
+                                    },
                 preserveScroll: true,
             });
         } else {
             post('/users', {
                 onSuccess: () => {
                     reset();
-                    toast.success('User baru berhasil ditambahkan');
-                },
+                                    },
                 preserveScroll: true,
             });
         }
@@ -105,8 +103,7 @@ export default function Index({ users }: Props) {
         router.delete(`/users/${deleteModal.id}`, {
             onSuccess: () => {
                 setDeleteModal({ show: false, id: null, nama: '' });
-                toast.success('User berhasil dihapus');
-                if (editingId === deleteModal.id) cancelEdit();
+                                if (editingId === deleteModal.id) cancelEdit();
             },
             onError: (err) => {
                 toast.error(err.error || 'Gagal menghapus user');
@@ -189,21 +186,14 @@ export default function Index({ users }: Props) {
                                 {errors.nama && <p className="text-xs text-red-500 mt-1">{errors.nama}</p>}
                             </div>
 
-                            {/* Username & Email */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Username *</label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">@</span>
-                                        <input type="text" value={data.username} onChange={e => setData('username', e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, ''))} className="w-full h-11 pl-8 pr-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none" placeholder="dewi.kasir" required />
-                                    </div>
-                                    {errors.username && <p className="text-xs text-red-500 mt-1">{errors.username}</p>}
+                            {/* Email */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Email Akun (Digunakan untuk Login) *</label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-4" />
+                                    <input type="email" value={data.email} onChange={e => setData('email', e.target.value)} className="w-full h-11 pl-10 pr-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none" placeholder="dewi@email.com" required />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Email *</label>
-                                    <input type="email" value={data.email} onChange={e => setData('email', e.target.value)} className="w-full h-11 px-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none" placeholder="dewi@email.com" required />
-                                    {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
-                                </div>
+                                {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
                             </div>
 
                             {/* Role */}
@@ -296,12 +286,7 @@ export default function Index({ users }: Props) {
                             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                                 <div className="relative flex-1">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-4" />
-                                    <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama, username, email..." className="w-full h-10 pl-9 pr-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none" />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button onClick={() => window.location.reload()} className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-zinc-800 text-gray-500 hover:bg-gray-100 flex items-center justify-center transition-colors">
-                                        <RefreshCw className="size-4" />
-                                    </button>
+                                    <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama atau email..." className="w-full h-10 pl-9 pr-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:ring-2 focus:ring-[#f5b800] outline-none" />
                                 </div>
                             </div>
 
@@ -325,7 +310,7 @@ export default function Index({ users }: Props) {
                                     <thead>
                                         <tr className="bg-gray-50 dark:bg-[#1C1A14] text-[10px] uppercase tracking-wider text-gray-500">
                                             <th className="py-3 px-4 font-semibold">Pengguna</th>
-                                            <th className="py-3 px-4 font-semibold hidden md:table-cell">Kontak</th>
+                                            <th className="py-3 px-4 font-semibold hidden md:table-cell">Email Login</th>
                                             <th className="py-3 px-4 font-semibold">Role</th>
                                             <th className="py-3 px-4 font-semibold hidden sm:table-cell">Login Terakhir</th>
                                             <th className="py-3 px-4 text-right font-semibold">Aksi</th>

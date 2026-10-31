@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\StokTidakCukupException;
 use App\Models\StockOut;
 use App\Services\StockService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,14 +20,14 @@ class StockOutController extends Controller
             ->withQueryString();
 
         // 1. Total Item Keluar
-        $totalItem = \App\Models\StockOut::sum('qty');
+        $totalItem = StockOut::sum('qty');
 
-        // 2. Estimasi Kerugian (Qty * Harga Beli Produk)
-        $totalLoss = \App\Models\StockOut::join('products', 'stock_outs.product_id', '=', 'products.id')
-            ->sum(\Illuminate\Support\Facades\DB::raw('stock_outs.qty * products.harga_beli'));
+        // 2. Estimasi Kerugian (Qty * Snapshot Harga Beli Historis)
+        $totalLoss = StockOut::leftJoin('products', 'stock_outs.product_id', '=', 'products.id')
+            ->sum(DB::raw('stock_outs.qty * CASE WHEN stock_outs.harga_beli > 0 THEN stock_outs.harga_beli ELSE COALESCE(products.harga_beli, 0) END'));
 
         // 3. Alasan Dominan
-        $topReason = \App\Models\StockOut::select('alasan', \Illuminate\Support\Facades\DB::raw('count(*) as count'))
+        $topReason = StockOut::select('alasan', DB::raw('count(*) as count'))
             ->groupBy('alasan')
             ->orderByDesc('count')
             ->first();
@@ -37,7 +39,7 @@ class StockOutController extends Controller
                 'total_loss' => (float) $totalLoss,
                 'top_reason' => $topReason ? $topReason->alasan : '-',
                 'top_reason_count' => $topReason ? $topReason->count : 0,
-            ]
+            ],
         ]);
     }
 
@@ -58,8 +60,9 @@ class StockOutController extends Controller
 
         try {
             $stockService->stockOut($validated, auth()->id());
+
             return redirect()->route('stock-out.index')->with('success', 'Stok keluar berhasil dicatat.');
-        } catch (\App\Exceptions\StokTidakCukupException $e) {
+        } catch (StokTidakCukupException $e) {
             return back()->withErrors(['qty' => $e->getMessage()])->withInput();
         }
     }

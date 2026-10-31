@@ -4,7 +4,8 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { Button } from '@/Components/ui/button';
 import { ArrowLeft, Save, Calculator, Image as ImageIcon, Barcode, Tag, Layers, X } from 'lucide-react';
 import { Select } from '@/Components/ui/select';
-import { formatDotNumber } from '@/lib/utils';
+import { formatDotNumber, parseRawNumber } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface Props {
     categories: { id: number; nama: string }[];
@@ -34,18 +35,25 @@ export default function Create({ categories }: Props) {
     }, []);
 
     const handleHargaBeliChange = (val: string) => {
-        setData('harga_beli', val);
-        const hpp = parseFloat(val) || 0;
+        const clean = val.replace(/\D/g, '');
+        setData('harga_beli', clean);
+        const hpp = clean ? parseInt(clean, 10) : 0;
         if (margin > 0) {
             const newJual = hpp + (hpp * (margin / 100));
             setData('harga_jual', Math.round(newJual).toString());
+        } else {
+            const currentJual = parseRawNumber(data.harga_jual);
+            if (currentJual > 0 && hpp > 0) {
+                const calculatedMargin = ((currentJual - hpp) / hpp) * 100;
+                setMargin(Math.round(calculatedMargin));
+            }
         }
     };
 
     const handleMarginChange = (val: string) => {
         const m = parseFloat(val) || 0;
         setMargin(m);
-        const hpp = parseFloat(data.harga_beli) || 0;
+        const hpp = parseRawNumber(data.harga_beli);
         if (hpp > 0) {
             const newJual = hpp + (hpp * (m / 100));
             setData('harga_jual', Math.round(newJual).toString());
@@ -53,9 +61,10 @@ export default function Create({ categories }: Props) {
     };
 
     const handleHargaJualChange = (val: string) => {
-        setData('harga_jual', val);
-        const jual = parseFloat(val) || 0;
-        const hpp = parseFloat(data.harga_beli) || 0;
+        const clean = val.replace(/\D/g, '');
+        setData('harga_jual', clean);
+        const jual = clean ? parseInt(clean, 10) : 0;
+        const hpp = parseRawNumber(data.harga_beli);
         if (hpp > 0) {
             const calculatedMargin = ((jual - hpp) / hpp) * 100;
             setMargin(Math.round(calculatedMargin));
@@ -72,6 +81,12 @@ export default function Create({ categories }: Props) {
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
+        const hpp = parseRawNumber(data.harga_beli);
+        const jual = parseRawNumber(data.harga_jual);
+        if (jual <= hpp) {
+            toast.error('Harga jual harus lebih tinggi dari harga beli (HPP)!');
+            return;
+        }
         post('/products', {
             preserveScroll: true,
             forceFormData: true, // Wajib untuk upload file
@@ -256,6 +271,9 @@ export default function Create({ categories }: Props) {
                                     />
                                 </div>
                                 {errors.harga_jual && <p className="text-xs text-red-500 mt-1">{errors.harga_jual}</p>}
+                                {(!errors.harga_jual && parseRawNumber(data.harga_jual) > 0 && parseRawNumber(data.harga_beli) > 0 && parseRawNumber(data.harga_jual) <= parseRawNumber(data.harga_beli)) && (
+                                    <p className="text-xs text-red-500 mt-1 font-medium">Harga jual harus lebih tinggi dari harga beli</p>
+                                )}
                             </div>
                         </div>
 
@@ -399,7 +417,7 @@ export default function Create({ categories }: Props) {
                             </div>
                             <div className="mt-3 pt-2 border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between">
                                 <div className="flex flex-col">
-                                    <span className="text-sm font-bold text-[#f5b800]">Rp {formatRupiah(parseFloat(data.harga_jual) || 0)}</span>
+                                    <span className="text-sm font-bold text-[#f5b800]">Rp {formatRupiah(parseRawNumber(data.harga_jual))}</span>
                                 </div>
                                 <span className="text-xs bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded font-medium">
                                     Stok: {data.stok_awal || 0}

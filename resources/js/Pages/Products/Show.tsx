@@ -212,8 +212,8 @@ export default function Show({ product, kategori, movements, totalInBulanIni, to
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id as any)}
                                     className={`px-4 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${activeTab === tab.id
-                                            ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm'
-                                            : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                                        ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
                                         }`}
                                 >
                                     {tab.label}

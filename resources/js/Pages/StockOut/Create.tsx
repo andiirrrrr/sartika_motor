@@ -73,7 +73,14 @@ export default function Create() {
     };
 
     const handleQtyChange = (val: string) => {
-        let num = parseFloat(val) || 0;
+        if (val === '') {
+            setData('qty', '');
+            return;
+        }
+        let num = parseFloat(val);
+        if (isNaN(num) || num < 0) {
+            num = 0;
+        }
         if (selectedProduct && num > parseFloat(selectedProduct.stok)) {
             num = parseFloat(selectedProduct.stok);
         }
@@ -239,7 +246,7 @@ export default function Create() {
                                 <div>
                                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Qty Dikeluarkan *</label>
                                     <div className="flex items-center h-14 bg-gray-50 dark:bg-zinc-800 rounded-xl border border-gray-200 dark:border-zinc-700 p-1">
-                                        <button type="button" onClick={() => handleQtyChange((parseFloat(data.qty || '0') - 1).toString())} className="w-10 h-10 rounded-lg hover:bg-white dark:hover:bg-zinc-700 flex items-center justify-center transition-colors">
+                                        <button type="button" onClick={() => handleQtyChange(Math.max(1, (parseFloat(data.qty || '1') - 1)).toString())} className="w-10 h-10 rounded-lg hover:bg-white dark:hover:bg-zinc-700 flex items-center justify-center transition-colors">
                                             <Minus className="size-5 text-gray-500" />
                                         </button>
                                         <input
@@ -253,7 +260,7 @@ export default function Create() {
                                             disabled={!selectedProduct}
                                             required
                                         />
-                                        <button type="button" onClick={() => handleQtyChange((parseFloat(data.qty || '0') + 1).toString())} className="w-10 h-10 rounded-lg hover:bg-white dark:hover:bg-zinc-700 flex items-center justify-center transition-colors">
+                                        <button type="button" onClick={() => handleQtyChange(((parseFloat(data.qty || '0') || 0) + 1).toString())} className="w-10 h-10 rounded-lg hover:bg-white dark:hover:bg-zinc-700 flex items-center justify-center transition-colors">
                                             <Plus className="size-5 text-gray-500" />
                                         </button>
                                     </div>

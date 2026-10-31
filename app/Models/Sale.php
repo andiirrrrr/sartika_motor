@@ -24,12 +24,18 @@ class Sale extends Model
         'kasir_id',
         'shift_id',
         'payment_method_id',
+        'status',
+        'idempotency_key',
+        'voided_at',
+        'voided_by',
+        'void_reason',
     ];
 
     protected function casts(): array
     {
         return [
             'tanggal' => 'datetime',
+            'voided_at' => 'datetime',
             'total' => 'integer',
             'bayar' => 'integer',
             'kembalian' => 'integer',
@@ -46,9 +52,19 @@ class Sale extends Model
         return $this->belongsTo(User::class, 'kasir_id');
     }
 
+    public function voidedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'voided_by');
+    }
+
     public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class, 'payment_method_id');
+    }
+
+    public function scopeSelesai(Builder $query): Builder
+    {
+        return $query->where('status', 'selesai');
     }
 
     public function scopeRentangTanggal(Builder $query, string $dari, string $sampai): Builder

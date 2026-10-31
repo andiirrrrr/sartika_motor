@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,7 +16,7 @@ class UserController extends Controller
     {
         return Inertia::render('Users/Index', [
             'users' => User::orderBy('role')->orderBy('nama')->get([
-                'id', 'nama', 'username', 'email', 'role', 'last_login_at',
+                'id', 'nama', 'email', 'role', 'last_login_at',
             ]),
         ]);
     }
@@ -24,10 +25,8 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'nama' => 'required|string|max:100',
-            'username' => 'required|string|max:50|unique:users,username',
-            'email' => 'required|string|email|max:255|unique:users,email', // Jangan lupa email
+            'email' => 'required|string|email|max:255|unique:users,email',
             'role' => 'required|in:admin,kasir',
-            // Ganti validasi password
             'password' => ['required', 'string', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
         ]);
 
@@ -40,10 +39,8 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'nama' => 'required|string|max:100',
-            'username' => ['required', 'string', 'max:50', Rule::unique('users')->ignore($user->id)],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'role' => 'required|in:admin,kasir',
-            // Ganti validasi password
             'password' => ['nullable', 'string', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
         ]);
 
@@ -68,8 +65,24 @@ class UserController extends Controller
             return back()->with('error', 'Tidak dapat menghapus admin terakhir.');
         }
 
-        $user->delete();
+        // 3. Cegah hapus user yang memiliki riwayat transaksi, shift, atau stok
+        if ($user->sales()->exists() || $user->shifts()->exists() || $user->stockMovements()->exists() || $user->stockIns()->exists() || $user->stockOuts()->exists()) {
+            return back()->with('error', 'Pengguna tidak dapat dihapus karena memiliki riwayat transaksi/shift/stok.');
+        }
 
-        return back()->with('success', 'User berhasil dihapus.');
+        try {
+            ActivityLog::log(
+                tipe: 'hapus_user',
+                deskripsi: "Penghapusan akun user: {$user->nama} ({$user->email}, role: {$user->role})",
+                subjekTipe: 'User',
+                subjekId: $user->id,
+            );
+
+            $user->delete();
+
+            return back()->with('success', 'User berhasil dihapus.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal menghapus pengguna: '.$e->getMessage());
+        }
     }
 }

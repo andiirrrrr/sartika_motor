@@ -4,9 +4,11 @@ namespace App\Services;
 
 use App\Exceptions\CheckoutException;
 use App\Exceptions\StokTidakCukupException;
+use App\Models\ActivityLog;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -17,20 +19,37 @@ class SaleService
     ) {}
 
     /**
-     * Proses checkout POS secara atomic.
+     * Proses checkout POS secara atomic dengan proteksi idempotency.
      *
      * @param  array{
      *     items: array<int, array{product_id:int, qty:float|int|string}>,
      *     metode_bayar: string,
      *     bayar?: int|float|string,
+     *     idempotency_key?: string,
      * }  $data
      */
     public function checkout(array $data, int $kasirId): Sale
     {
+        // 0. Cek Idempotency Key sebelum memulai transaksi
+        if (! empty($data['idempotency_key'])) {
+            $existing = Sale::where('idempotency_key', $data['idempotency_key'])->first();
+            if ($existing) {
+                return $existing->fresh(['items', 'kasir:id,nama,username', 'paymentMethod']);
+            }
+        }
+
         $items = $this->normalizeItems($data['items'] ?? []);
         $metodeBayar = $this->validateMetodeBayar($data['metode_bayar'] ?? '');
 
         return DB::transaction(function () use ($items, $metodeBayar, $data, $kasirId) {
+            // Cek ulang idempotency di dalam transaksi dengan lock
+            if (! empty($data['idempotency_key'])) {
+                $existing = Sale::where('idempotency_key', $data['idempotency_key'])->lockForUpdate()->first();
+                if ($existing) {
+                    return $existing->fresh(['items', 'kasir:id,nama,username', 'paymentMethod']);
+                }
+            }
+
             // 1. Lock semua produk dalam 1 query — urut ascending untuk hindari deadlock
             $productIds = array_column($items, 'product_id');
             sort($productIds);
@@ -124,6 +143,8 @@ class SaleService
                 'no_wa' => ! empty($data['no_wa']) ? trim($data['no_wa']) : null,
                 'kasir_id' => $kasirId,
                 'shift_id' => $data['shift_id'] ?? null,
+                'status' => 'selesai',
+                'idempotency_key' => $data['idempotency_key'] ?? null,
             ]);
 
             // 5. Insert sale_items + catat stock movement
@@ -137,6 +158,7 @@ class SaleService
                     'kode_barang' => $product->kode_barang,   // snapshot
                     'nama_produk' => $product->nama,           // snapshot
                     'qty' => $item['qty'],
+                    'harga_beli' => (int) $product->harga_beli, // snapshot HPP saat transaksi
                     'harga_jual' => $item['harga_jual'],       // snapshot
                     'is_grosir' => $item['is_grosir'],
                     'harga_normal' => $item['harga_normal'],
@@ -144,7 +166,6 @@ class SaleService
                 ]);
 
                 // StockService akan update products.stok + insert stock_movements
-                // Produk sudah di-lock, jadi aman.
                 $this->stockService->recordSaleMovement(
                     lockedProduct: $product,
                     qty: $item['qty'],
@@ -159,22 +180,86 @@ class SaleService
     }
 
     /**
+     * Batalkan (Void) transaksi penjualan.
+     * Mengembalikan stok produk dan mencatat audit trail.
+     */
+    public function voidSale(Sale $sale, int $userId, string $reason): Sale
+    {
+        if ($sale->status === 'void') {
+            throw new DomainException('Transaksi ini sudah dibatalkan sebelumnya.');
+        }
+
+        return DB::transaction(function () use ($sale, $userId, $reason) {
+            /** @var Sale $lockedSale */
+            $lockedSale = Sale::where('id', $sale->id)->lockForUpdate()->firstOrFail();
+            if ($lockedSale->status === 'void') {
+                throw new DomainException('Transaksi ini sudah dibatalkan sebelumnya.');
+            }
+
+            $items = $lockedSale->items()->get();
+            $productIds = $items->pluck('product_id')->unique()->sort()->values()->all();
+
+            $products = Product::whereIn('id', $productIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            foreach ($items as $item) {
+                $product = $products->get($item->product_id);
+                if ($product) {
+                    $this->stockService->recordVoidMovement(
+                        lockedProduct: $product,
+                        qty: (float) $item->qty,
+                        saleId: $lockedSale->id,
+                        userId: $userId,
+                    );
+                }
+            }
+
+            $lockedSale->update([
+                'status' => 'void',
+                'voided_at' => now(),
+                'voided_by' => $userId,
+                'void_reason' => $reason,
+            ]);
+
+            ActivityLog::log(
+                tipe: 'void_transaksi',
+                deskripsi: "Pembatalan transaksi #{$lockedSale->no_transaksi}. Alasan: {$reason}",
+                subjekTipe: 'Sale',
+                subjekId: $lockedSale->id,
+                dataLama: [
+                    'status' => 'selesai',
+                    'total' => $lockedSale->total,
+                ],
+                dataBaru: [
+                    'status' => 'void',
+                    'alasan' => $reason,
+                ],
+            );
+
+            return $lockedSale->fresh(['items', 'kasir:id,nama,username', 'paymentMethod', 'voidedBy:id,nama']);
+        });
+    }
+
+    /**
      * Generate nomor transaksi: INV-YYYYMMDD-XXXX
-     * XXXX = urutan harian (4 digit, reset tiap hari).
+     * XXXX = urutan harian (4+ digit, reset tiap hari).
      */
     private function generateNoTransaksi(): string
     {
         $prefix = 'INV-'.now()->format('Ymd').'-';
 
         $last = Sale::where('no_transaksi', 'like', $prefix.'%')
-            ->orderByDesc('no_transaksi')
+            ->orderByDesc('id')
             ->lockForUpdate()
             ->first();
 
         $nextNumber = 1;
         if ($last) {
-            $lastNumber = (int) substr($last->no_transaksi, -4);
-            $nextNumber = $lastNumber + 1;
+            $lastPart = substr($last->no_transaksi, strrpos($last->no_transaksi, '-') + 1);
+            $nextNumber = ((int) $lastPart) + 1;
         }
 
         return $prefix.str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
@@ -182,8 +267,6 @@ class SaleService
 
     /**
      * Validasi & normalisasi input items.
-     * - Tolak product_id duplikat (frontend harus merge qty sebelum kirim)
-     * - Pastikan tiap item punya product_id & qty
      */
     private function normalizeItems(mixed $items): array
     {

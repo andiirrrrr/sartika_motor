@@ -4,10 +4,11 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { Button } from '@/Components/ui/button';
 import {
     Download, Calendar, Clock, Wallet, AlertTriangle,
-    CheckCircle2, X, ShieldCheck, Printer, TrendingUp
+    CheckCircle2, X, ShieldCheck, Printer, TrendingUp, FileText
 } from 'lucide-react';
 import Pagination from '@/Components/Pagination';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface Props {
     shifts: {
@@ -38,6 +39,29 @@ export default function Index({ shifts, stats }: Props) {
     const [uangFisik, setUangFisik] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // State Force Close Shift oleh Admin
+    const [forceCloseModal, setForceCloseModal] = useState<{ show: boolean; shift: any | null }>({ show: false, shift: null });
+    const [forceUangFisik, setForceUangFisik] = useState('');
+    const [forceAlasan, setForceAlasan] = useState('');
+    const [isForceClosing, setIsForceClosing] = useState(false);
+
+    const handleForceClose = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!forceCloseModal.shift) return;
+        setIsForceClosing(true);
+        router.post(`/shifts/${forceCloseModal.shift.id}/force-close`, {
+            uang_fisik: Number(forceUangFisik.replace(/\D/g, '')),
+            alasan: forceAlasan,
+        }, {
+            onSuccess: () => {
+                setForceCloseModal({ show: false, shift: null });
+                setForceUangFisik('');
+                setForceAlasan('');
+            },
+            onFinish: () => setIsForceClosing(false),
+        });
+    };
+
     const openZReport = (shift: any) => {
         setSelectedShift(shift);
         setShowZReport(true);
@@ -50,8 +74,7 @@ export default function Index({ shifts, stats }: Props) {
             onSuccess: () => {
                 setShowEndShift(false);
                 setUangFisik('');
-                toast.success('Shift berhasil ditutup.');
-            },
+                            },
             onFinish: () => setIsSubmitting(false)
         });
     };
@@ -222,9 +245,21 @@ export default function Index({ shifts, stats }: Props) {
                                                 </span>
                                             </td>
                                             <td className="py-4 px-4 text-center">
-                                                <Button size="sm" variant="ghost" onClick={() => openZReport(s)} className="h-8 px-3 text-[#f5b800] hover:bg-[#f5b800]/10">
-                                                    Lihat Rekap
-                                                </Button>
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <Button size="sm" variant="ghost" onClick={() => openZReport(s)} className="h-8 px-3 text-[#f5b800] hover:bg-[#f5b800]/10">
+                                                        Lihat Rekap
+                                                    </Button>
+                                                    {s.status === 'buka' && s.user_id !== auth?.user?.id && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => setForceCloseModal({ show: true, shift: s })}
+                                                            className="h-8 px-2.5 text-xs text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                                        >
+                                                            Tutup Paksa
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
@@ -304,6 +339,18 @@ export default function Index({ shifts, stats }: Props) {
                                         <span className="text-gray-500">Penjualan Tunai</span>
                                         <span className="font-semibold text-green-600 dark:text-green-400">Rp {formatRupiah(selectedShift.total_penjualan_tunai)}</span>
                                     </div>
+                                    {Number(selectedShift.total_kas_masuk) > 0 && (
+                                        <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                                            <span>Kas Masuk Tambahan (+)</span>
+                                            <span className="font-semibold">+Rp {formatRupiah(selectedShift.total_kas_masuk)}</span>
+                                        </div>
+                                    )}
+                                    {Number(selectedShift.total_kas_keluar) > 0 && (
+                                        <div className="flex justify-between text-red-500">
+                                            <span>Kas Keluar Operasional (-)</span>
+                                            <span className="font-semibold">-Rp {formatRupiah(selectedShift.total_kas_keluar)}</span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between">
                                         <span className="text-gray-500">Penjualan Non-Tunai</span>
                                         <span className="font-semibold">Rp {formatRupiah(selectedShift.sales_sum_total || 0)}</span>
@@ -333,6 +380,59 @@ export default function Index({ shifts, stats }: Props) {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Catatan Rincian Kas Masuk & Keluar Toko */}
+                            {((selectedShift.cash_movements || selectedShift.cashMovements || []).length > 0) ? (
+                                <div className="space-y-3">
+                                    <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center justify-between">
+                                        <span className="flex items-center gap-2">
+                                            <FileText className="size-4 text-amber-500" /> Catatan Kas Masuk & Keluar Toko
+                                        </span>
+                                        <span className="text-xs text-gray-500 font-normal">
+                                            {(selectedShift.cash_movements || selectedShift.cashMovements || []).length} Catatan
+                                        </span>
+                                    </h4>
+                                    <div className="border border-gray-100 dark:border-zinc-800 rounded-xl overflow-hidden divide-y divide-gray-100 dark:border-zinc-800 text-xs">
+                                        {(selectedShift.cash_movements || selectedShift.cashMovements || []).map((m: any, idx: number) => (
+                                            <div key={m.id || idx} className="p-3 flex items-start justify-between gap-3 bg-gray-50/50 dark:bg-zinc-800/30">
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className={cn(
+                                                            "px-2 py-0.5 rounded-full font-bold uppercase text-[9px]",
+                                                            m.tipe === 'masuk'
+                                                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                                                                : "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400 border border-red-200 dark:border-red-800"
+                                                        )}>
+                                                            {m.tipe === 'masuk' ? 'Kas Masuk (+)' : 'Kas Keluar (-)'}
+                                                        </span>
+                                                        <span className="text-gray-400 text-[10px]">
+                                                            {m.created_at ? new Date(m.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                                        </span>
+                                                        {m.created_by?.nama && (
+                                                            <span className="text-gray-500 text-[10px]">• oleh {m.created_by.nama}</span>
+                                                        )}
+                                                    </div>
+                                                    <p className="font-medium text-gray-900 dark:text-gray-200 text-xs">
+                                                        {m.alasan}
+                                                    </p>
+                                                </div>
+                                                <span className={cn(
+                                                    "font-bold text-sm whitespace-nowrap",
+                                                    m.tipe === 'masuk' ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+                                                )}>
+                                                    {m.tipe === 'masuk' ? '+' : '-'}Rp {formatRupiah(m.jumlah)}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                (Number(selectedShift.total_kas_masuk) > 0 || Number(selectedShift.total_kas_keluar) > 0) ? (
+                                    <div className="p-3 rounded-xl bg-gray-50 dark:bg-zinc-800/50 border border-gray-100 dark:border-zinc-800 text-xs text-gray-500">
+                                        Tidak ada catatan rincian kas tambahan untuk shift ini.
+                                    </div>
+                                ) : null
+                            )}
                         </div>
 
                         <div className="p-4 bg-gray-50 dark:bg-[#1C1A14] border-t border-gray-100 dark:border-zinc-800 flex justify-end gap-2">
@@ -400,6 +500,75 @@ export default function Index({ shifts, stats }: Props) {
                                 <Button type="button" variant="outline" onClick={() => setShowEndShift(false)}>Batal</Button>
                                 <Button type="submit" disabled={isSubmitting} className="bg-red-600 hover:bg-red-700 text-white">
                                     {isSubmitting ? 'Memproses...' : 'Konfirmasi & Tutup'}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {/* MODAL FORCE CLOSE SHIFT (ADMIN) */}
+            {forceCloseModal.show && forceCloseModal.shift && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+                    <div className="w-full max-w-md bg-white dark:bg-[#232019] rounded-2xl shadow-xl overflow-hidden flex flex-col">
+                        <div className="px-6 py-4 bg-red-50 dark:bg-red-900/20 flex items-center justify-between border-b border-red-100 dark:border-red-900/30">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center text-red-600">
+                                    <Clock className="size-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Tutup Paksa Shift</h3>
+                                    <p className="text-xs text-red-600 dark:text-red-400">Kasir: {forceCloseModal.shift.user?.nama}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setForceCloseModal({ show: false, shift: null })} className="text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                                <X className="size-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleForceClose} className="p-6 space-y-4">
+                            <div className="bg-amber-50 dark:bg-amber-950/20 p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/30 text-xs text-amber-800 dark:text-amber-300">
+                                Tindakan ini dicatat dalam <strong>Audit Log Keamanan</strong> sebagai penutupan paksa oleh Admin.
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                    Jumlah Uang Fisik di Laci Kas *
+                                </label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rp</span>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={forceUangFisik}
+                                        onChange={(e) => {
+                                            const raw = e.target.value.replace(/\D/g, '');
+                                            setForceUangFisik(raw ? new Intl.NumberFormat('id-ID').format(Number(raw)) : '');
+                                        }}
+                                        className="w-full h-12 pl-12 pr-4 rounded-xl bg-gray-50 dark:bg-zinc-800 border-2 border-red-500 text-lg font-bold text-gray-900 dark:text-white focus:outline-none"
+                                        placeholder="0"
+                                        required
+                                        autoFocus
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                    Alasan Penutupan Paksa
+                                </label>
+                                <input
+                                    type="text"
+                                    value={forceAlasan}
+                                    onChange={(e) => setForceAlasan(e.target.value)}
+                                    className="w-full h-11 px-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm focus:outline-none"
+                                    placeholder="Contoh: Kasir pulang mendadak / sakit"
+                                />
+                            </div>
+
+                            <div className="pt-2 flex justify-end gap-2">
+                                <Button type="button" variant="outline" onClick={() => setForceCloseModal({ show: false, shift: null })}>Batal</Button>
+                                <Button type="submit" disabled={isForceClosing} className="bg-red-600 hover:bg-red-700 text-white font-semibold">
+                                    {isForceClosing ? 'Memproses...' : 'Tutup Paksa Shift'}
                                 </Button>
                             </div>
                         </form>

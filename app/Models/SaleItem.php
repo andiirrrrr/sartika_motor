@@ -16,6 +16,7 @@ class SaleItem extends Model
         'kode_barang',
         'nama_produk',
         'qty',
+        'harga_beli',
         'harga_jual',
         'is_grosir',
         'harga_normal',
@@ -26,6 +27,7 @@ class SaleItem extends Model
     {
         return [
             'qty' => 'decimal:2',
+            'harga_beli' => 'integer',
             'harga_jual' => 'integer',
             'harga_normal' => 'integer',
             'is_grosir' => 'boolean',

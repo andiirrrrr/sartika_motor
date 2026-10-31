@@ -13,6 +13,8 @@ interface SaleData {
     kembalian: number;
     nama_pelanggan?: string | null;
     kasir?: { nama: string } | null;
+    status?: string;
+    void_reason?: string | null;
     items: {
         id: number;
         nama_produk: string;
@@ -30,6 +32,7 @@ interface AppSettings {
     store_address?: string;
     store_phone?: string;
     receipt_footer?: string;
+    receipt_paper_size?: string;
 }
 
 interface ReceiptPreviewProps {
@@ -43,6 +46,7 @@ const formatRupiah = (n: number) => new Intl.NumberFormat('id-ID').format(n);
  * Komponen struk thermal profesional yang digunakan di POS dan Sales.
  * Menampilkan preview struk dengan efek kertas thermal (gerigi atas/bawah),
  * header toko, info transaksi, daftar item, total, pembayaran, dan barcode.
+ * Mendukung format 58mm (mobile/kecil) dan 80mm (desktop/standar).
  *
  * Elemen dengan id="print-section" akan di-print saat window.print().
  */
@@ -51,16 +55,30 @@ export default function ReceiptPreview({ sale, appSettings }: ReceiptPreviewProp
     const storeAddress = appSettings?.store_address || '';
     const storePhone = appSettings?.store_phone || '';
     const receiptFooter = appSettings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kami';
+    const is58mm = (appSettings?.receipt_paper_size || '80mm') === '58mm';
 
     return (
-        <div className="relative w-full max-w-[320px] transition-transform duration-300">
+        <div className={`relative w-full ${is58mm ? 'max-w-[260px]' : 'max-w-[320px]'} transition-transform duration-300`}>
+            {/* Dynamic Print Style sesuai ukuran kertas */}
+            <style>{`
+                @page { size: ${is58mm ? '58mm auto' : '80mm auto'}; margin: 0; }
+                @media print {
+                    html, body { width: ${is58mm ? '58mm' : '80mm'} !important; }
+                    #print-section {
+                        width: ${is58mm ? '58mm' : '80mm'} !important;
+                        max-width: ${is58mm ? '58mm' : '80mm'} !important;
+                        padding: ${is58mm ? '1mm 2mm' : '2mm 4mm'} !important;
+                        font-size: ${is58mm ? '10.5px' : '12px'} !important;
+                    }
+                }
+            `}</style>
             {/* Efek Gerigi Atas */}
             <div className="w-full h-3 overflow-hidden flex items-end no-print">
                 <div className="w-full h-2.5 bg-[#FAF9F5] dark:bg-zinc-200 [mask-image:radial-gradient(circle_at_5px_0px,transparent_4px,#FAF9F5_5px)] [mask-size:10px_10px]"></div>
             </div>
 
             {/* Body Kertas Struk */}
-            <div id="print-section" className="bg-[#FAF9F5] px-6 py-7 shadow-xl text-[#1F1D17] relative">
+            <div id="print-section" className={`bg-[#FAF9F5] ${is58mm ? 'px-3 py-4 text-xs' : 'px-6 py-7'} shadow-xl text-[#1F1D17] relative`}>
 
                 {/* Header Toko */}
                 <div className="text-center space-y-1 mb-4">
@@ -82,6 +100,18 @@ export default function ReceiptPreview({ sale, appSettings }: ReceiptPreviewProp
                 </div>
 
                 <div className="my-3 border-b border-dashed border-gray-400"></div>
+
+                {/* Status VOID jika transaksi dibatalkan */}
+                {sale.status === 'void' && (
+                    <div className="mb-3 p-2 border-2 border-red-500 rounded bg-red-50 text-red-700 text-center font-bold text-xs uppercase tracking-wider">
+                        *** TRANSAKSI TELAH DIBATALKAN (VOID) ***
+                        {sale.void_reason && (
+                            <div className="text-[10px] font-normal lowercase normal-case mt-0.5">
+                                Alasan: {sale.void_reason}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Meta Transaksi */}
                 <div className="font-mono text-xs text-gray-800 space-y-1.5">

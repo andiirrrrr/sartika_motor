@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -49,6 +50,20 @@ class CategoryController extends Controller
             return back()->with('error', 'Gagal menghapus. Kategori ini masih memiliki produk terkait.');
         }
 
+        ActivityLog::log(
+            tipe: 'hapus_kategori',
+            deskripsi: "Penghapusan kategori: {$category->nama}",
+            subjekTipe: 'Category',
+            subjekId: $category->id,
+        );
+
+        ActivityLog::log(
+            tipe: 'hapus_kategori',
+            deskripsi: "Penghapusan kategori: {$category->nama}",
+            subjekTipe: 'Category',
+            subjekId: $category->id,
+        );
+
         $category->delete();
 
         return back()->with('success', 'Kategori berhasil dihapus.');
@@ -76,6 +91,20 @@ class CategoryController extends Controller
 
                 continue;
             }
+
+            ActivityLog::log(
+                tipe: 'hapus_kategori',
+                deskripsi: "Penghapusan kategori: {$category->nama}",
+                subjekTipe: 'Category',
+                subjekId: $category->id,
+            );
+
+            ActivityLog::log(
+                tipe: 'hapus_kategori',
+                deskripsi: "Penghapusan kategori: {$category->nama}",
+                subjekTipe: 'Category',
+                subjekId: $category->id,
+            );
 
             $category->delete();
             $deletedCount++;

@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
@@ -18,19 +19,26 @@ class ReportController extends Controller
         $from = $request->input('from', now()->startOfMonth()->toDateString());
         $to = $request->input('to', now()->toDateString());
 
-        // 1. Data Penjualan Harian
-        $salesSummary = Sale::whereBetween('tanggal', [$from.' 00:00:00', $to.' 23:59:59'])
+        // Normalisasi jika tanggal terbalik
+        if ($from > $to) {
+            [$from, $to] = [$to, $from];
+        }
+
+        // 1. Data Penjualan Harian (Hanya transaksi aktif / bukan void)
+        $salesSummary = Sale::where('status', '!=', 'void')
+            ->whereBetween('tanggal', [$from.' 00:00:00', $to.' 23:59:59'])
             ->selectRaw('DATE(tanggal) as date, COUNT(*) as total_transaksi, SUM(total) as total_omzet')
             ->groupBy('date')
-            ->orderBy('date', 'asc') // Urutkan naik untuk chart
+            ->orderBy('date', 'asc')
             ->get();
 
-        // 2. Data Detail Item & Laba Kotor (Join Sale Items & Products)
+        // 2. Data Detail Item & Laba Kotor (Snapshot sale_items.harga_beli dengan fallback ke products.harga_beli)
         $details = DB::table('sales')
             ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
-            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->leftJoin('products', 'sale_items.product_id', '=', 'products.id')
+            ->where('sales.status', '!=', 'void')
             ->whereBetween('sales.tanggal', [$from.' 00:00:00', $to.' 23:59:59'])
-            ->selectRaw('DATE(sales.tanggal) as date, SUM(sale_items.qty) as total_item, SUM((sale_items.harga_jual - products.harga_beli) * sale_items.qty) as total_laba')
+            ->selectRaw('DATE(sales.tanggal) as date, SUM(sale_items.qty) as total_item, SUM((sale_items.harga_jual - CASE WHEN sale_items.harga_beli > 0 THEN sale_items.harga_beli ELSE COALESCE(products.harga_beli, 0) END) * sale_items.qty) as total_laba')
             ->groupBy('date')
             ->get()
             ->keyBy('date');
@@ -41,7 +49,7 @@ class ReportController extends Controller
             $item->total_laba = $details->get($item->date)->total_laba ?? 0;
 
             return $item;
-        })->reverse()->values(); // Balikkan urutan (terbaru di atas untuk tabel)
+        })->reverse()->values();
 
         $totalOmzet = $salesSummary->sum('total_omzet');
         $totalTransaksi = $salesSummary->sum('total_transaksi');
@@ -68,7 +76,10 @@ class ReportController extends Controller
 
         // 4. Produk Terlaris (Top 5)
         $topProducts = DB::table('sale_items')
-            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->join('sales', function ($join) {
+                $join->on('sale_items.sale_id', '=', 'sales.id')
+                    ->where('sales.status', '!=', 'void');
+            })
             ->select('sale_items.nama_produk', DB::raw('SUM(sale_items.qty) as total_qty'), DB::raw('SUM(sale_items.subtotal) as total_revenue'))
             ->whereBetween('sales.tanggal', [$from.' 00:00:00', $to.' 23:59:59'])
             ->groupBy('sale_items.nama_produk')
@@ -78,7 +89,10 @@ class ReportController extends Controller
 
         // 5. Penjualan per Kategori
         $categorySales = DB::table('sale_items')
-            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->join('sales', function ($join) {
+                $join->on('sale_items.sale_id', '=', 'sales.id')
+                    ->where('sales.status', '!=', 'void');
+            })
             ->join('products', 'sale_items.product_id', '=', 'products.id')
             ->join('categories', 'products.kategori_id', '=', 'categories.id')
             ->select('categories.nama', DB::raw('SUM(sale_items.subtotal) as total_revenue'))
@@ -89,6 +103,7 @@ class ReportController extends Controller
 
         // 6. Metode Pembayaran
         $paymentMethods = DB::table('sales')
+            ->where('status', '!=', 'void')
             ->select('metode_bayar', DB::raw('COUNT(*) as total_transaksi'), DB::raw('SUM(total) as total_revenue'))
             ->whereBetween('tanggal', [$from.' 00:00:00', $to.' 23:59:59'])
             ->groupBy('metode_bayar')
@@ -96,12 +111,16 @@ class ReportController extends Controller
 
         // 7. Laporan Grosir
         $grosirItemsQuery = DB::table('sale_items')
-            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->join('sales', function ($join) {
+                $join->on('sale_items.sale_id', '=', 'sales.id')
+                    ->where('sales.status', '!=', 'void');
+            })
             ->whereBetween('sales.tanggal', [$from.' 00:00:00', $to.' 23:59:59'])
             ->where('sale_items.is_grosir', true);
 
         $grosirStats = [
-            'total_transaksi' => Sale::whereBetween('tanggal', [$from.' 00:00:00', $to.' 23:59:59'])
+            'total_transaksi' => Sale::where('status', '!=', 'void')
+                ->whereBetween('tanggal', [$from.' 00:00:00', $to.' 23:59:59'])
                 ->whereHas('items', fn ($q) => $q->where('is_grosir', true))
                 ->count(),
             'total_qty' => (float) (clone $grosirItemsQuery)->sum('sale_items.qty'),
@@ -144,6 +163,75 @@ class ReportController extends Controller
             'paymentMethods' => $paymentMethods,
             'grosirStats' => $grosirStats,
             'topGrosirProducts' => $topGrosirProducts,
+        ]);
+    }
+
+    /**
+     * Ekspor Laporan Lengkap Penjualan langsung dari database ke format CSV.
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        $from = $request->input('from', now()->startOfMonth()->toDateString());
+        $to = $request->input('to', now()->toDateString());
+
+        if ($from > $to) {
+            [$from, $to] = [$to, $from];
+        }
+
+        $filename = "laporan-penjualan-{$from}-sd-{$to}.csv";
+
+        return response()->streamDownload(function () use ($from, $to) {
+            $handle = fopen('php://output', 'w');
+            // Menambahkan UTF-8 BOM agar Excel dapat membuka karakter bahasa dengan benar
+            fwrite($handle, "\xEF\xBB\xBF");
+
+            // Header kolom
+            fputcsv($handle, [
+                'No Transaksi',
+                'Tanggal & Waktu',
+                'Kasir',
+                'Pelanggan',
+                'No WhatsApp',
+                'Metode Bayar',
+                'Total Omzet (Rp)',
+                'Total HPP (Rp)',
+                'Laba Kotor (Rp)',
+                'Status',
+                'Catatan Void',
+            ]);
+
+            $sales = Sale::with(['kasir:id,nama', 'items', 'paymentMethod'])
+                ->whereBetween('tanggal', [$from.' 00:00:00', $to.' 23:59:59'])
+                ->orderBy('tanggal', 'asc')
+                ->get();
+
+            foreach ($sales as $sale) {
+                $totalHpp = $sale->items->sum(function ($item) {
+                    $hpp = $item->harga_beli > 0 ? $item->harga_beli : 0;
+
+                    return $hpp * $item->qty;
+                });
+                $laba = $sale->status !== 'void' ? ($sale->total - $totalHpp) : 0;
+
+                fputcsv($handle, [
+                    $sale->no_transaksi,
+                    $sale->tanggal?->format('Y-m-d H:i:s'),
+                    $sale->kasir?->nama ?? '-',
+                    $sale->nama_pelanggan ?? 'Pelanggan Umum',
+                    $sale->no_wa ?? '-',
+                    strtoupper($sale->paymentMethod?->nama ?? $sale->metode_bayar),
+                    $sale->status !== 'void' ? $sale->total : 0,
+                    $sale->status !== 'void' ? $totalHpp : 0,
+                    $laba,
+                    strtoupper($sale->status),
+                    $sale->void_reason ?? '-',
+                ]);
+            }
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
         ]);
     }
 }

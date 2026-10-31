@@ -78,7 +78,7 @@ export default function Index({ sales, filters, stats }: Props) {
             `"${s.payment_method?.nama || s.metode_bayar}"`,
             s.items_count,
             s.total,
-            '"Lunas"'
+            s.status === 'void' ? '"Void"' : '"Lunas"'
         ]);
 
         const csvContent = 'data:text/csv;charset=utf-8,\uFEFF'
@@ -513,9 +513,15 @@ export default function Index({ sales, filters, stats }: Props) {
                                                     Rp {formatRupiah(sale.total)}
                                                 </td>
                                                 <td className="py-3 px-4 text-center">
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-[10px] font-bold">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Lunas
-                                                    </span>
+                                                    {sale.status === 'void' ? (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-[10px] font-bold">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> Void
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-[10px] font-bold">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Lunas
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="py-3 px-4 text-right">
                                                     <div className="flex items-center justify-end gap-1">

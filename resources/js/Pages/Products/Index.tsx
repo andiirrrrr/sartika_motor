@@ -5,7 +5,7 @@ import Pagination from '@/Components/Pagination';
 import {
     Plus, Upload, Download, Search, Barcode,
     Package, AlertTriangle, XCircle, FileText, Pencil, Trash2,
-    X, Info, RefreshCw, PackageOpen, Tags, ListFilter
+    X, Info, RefreshCw, PackageOpen, Tags, ListFilter, Activity
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import { Select } from '@/Components/ui/select';
@@ -39,10 +39,13 @@ interface Props {
     filters: {
         search: string;
         kategori_id: string | number | null;
+        status?: string | null;
         per_page: number;
     };
     stats: {
         total_sku: number;
+        total_aktif?: number;
+        total_nonaktif?: number;
         low_stock: number;
         out_of_stock: number;
     };
@@ -54,6 +57,7 @@ export default function Index({ products, categories, filters, stats }: Props) {
     const [search, setSearch] = useState(filters.search);
     const [kategoriId, setKategoriId] = useState(filters.kategori_id ? String(filters.kategori_id) : '');
     const [perPage, setPerPage] = useState(filters.per_page);
+    const [statusFilter, setStatusFilter] = useState(filters.status || '');
 
     // State untuk Modal Hapus (Sudah diperbaiki dengan tambahan stok & satuan)
     const [deleteModal, setDeleteModal] = useState<{
@@ -74,14 +78,14 @@ export default function Index({ products, categories, filters, stats }: Props) {
     useEffect(() => {
         const timer = setTimeout(() => {
             if (search !== filters.search) {
-                router.get('/products', { search, kategori_id: kategoriId || undefined, per_page: perPage }, { preserveState: true, replace: true });
+                router.get('/products', { search, kategori_id: kategoriId || undefined, status: statusFilter || undefined, per_page: perPage }, { preserveState: true, replace: true });
             }
         }, 300);
         return () => clearTimeout(timer);
     }, [search]);
 
     const applyFilter = (overrides: Record<string, unknown> = {}) => {
-        router.get('/products', { search, kategori_id: kategoriId || undefined, per_page: perPage, ...overrides }, { preserveState: true, replace: true });
+        router.get('/products', { search, kategori_id: kategoriId || undefined, status: statusFilter || undefined, per_page: perPage, ...overrides }, { preserveState: true, replace: true });
     };
 
     // Handler Import & Export
@@ -244,7 +248,14 @@ export default function Index({ products, categories, filters, stats }: Props) {
                                 <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Total SKU</span>
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#f5b800]"></span>
                             </div>
-                            <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.total_sku || 0} <span className="text-sm font-normal text-gray-500">Item</span></div>
+                            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                                {stats?.total_sku || 0} <span className="text-sm font-normal text-gray-500">Item</span>
+                                {stats?.total_nonaktif !== undefined && stats.total_nonaktif > 0 && (
+                                    <span className="block text-[11px] font-normal text-gray-400 mt-0.5">
+                                        {stats.total_aktif ?? stats.total_sku} Aktif · {stats.total_nonaktif} Nonaktif
+                                    </span>
+                                )}
+                            </div>
                         </div>
                         <div className="w-11 h-11 rounded-xl bg-gray-50 dark:bg-zinc-800 flex items-center justify-center text-gray-600 dark:text-gray-300">
                             <Package className="size-5" />
@@ -306,6 +317,23 @@ export default function Index({ products, categories, filters, stats }: Props) {
                                 placeholder="Semua Kategori"
                                 fullWidth={false}
                                 className="w-full sm:w-56"
+                            />
+
+                            <Select
+                                value={statusFilter}
+                                onChange={(val) => {
+                                    setStatusFilter(val);
+                                    applyFilter({ status: val || undefined });
+                                }}
+                                options={[
+                                    { value: '', label: 'Semua Status' },
+                                    { value: 'aktif', label: 'Status: Aktif' },
+                                    { value: 'nonaktif', label: 'Status: Nonaktif' },
+                                ]}
+                                icon={Activity}
+                                placeholder="Semua Status"
+                                fullWidth={false}
+                                className="w-full sm:w-44"
                             />
 
                             <Select
@@ -383,14 +411,15 @@ export default function Index({ products, categories, filters, stats }: Props) {
                                     <th className="py-3 px-4 font-semibold">Kategori</th>
                                     <th className="py-3 px-4 font-semibold text-right">Harga Jual</th>
                                     <th className="py-3 px-4 font-semibold text-center">Sisa Stok</th>
-                                    <th className="py-3 px-4 font-semibold text-center">Status</th>
+                                    <th className="py-3 px-4 font-semibold text-center">Status Stok</th>
+                                    <th className="py-3 px-4 font-semibold text-center">Status Jual</th>
                                     <th className="py-3 px-4 font-semibold text-right">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-zinc-800/50 text-sm">
                                 {products.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="py-12 text-center text-gray-500">
+                                        <td colSpan={9} className="py-12 text-center text-gray-500">
                                             {filters.search ? 'Tidak ada produk yang cocok dengan pencarian.' : 'Belum ada produk. Silakan tambah produk baru.'}
                                         </td>
                                     </tr>
@@ -405,7 +434,7 @@ export default function Index({ products, categories, filters, stats }: Props) {
                                         return (
                                             <tr
                                                 key={p.id}
-                                                className={`transition-colors group ${isChecked ? 'bg-[#f5b800]/5 dark:bg-[#f5b800]/10' : 'hover:bg-gray-50 dark:hover:bg-[#2B271F]'}`}
+                                                className={`transition-colors group ${!p.aktif ? 'opacity-85 bg-gray-50/70 dark:bg-zinc-900/40' : isChecked ? 'bg-[#f5b800]/5 dark:bg-[#f5b800]/10' : 'hover:bg-gray-50 dark:hover:bg-[#2B271F]'}`}
                                             >
                                                 <td className="py-3 px-4 text-center">
                                                     <input
@@ -465,6 +494,17 @@ export default function Index({ products, categories, filters, stats }: Props) {
                                                     ) : (
                                                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-[11px] font-semibold">
                                                             <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Aman
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-4 text-center">
+                                                    {p.aktif ? (
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 text-[11px] font-bold border border-emerald-200 dark:border-emerald-900/50">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Aktif
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400 text-[11px] font-bold border border-gray-200 dark:border-zinc-700">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span> Nonaktif
                                                         </span>
                                                     )}
                                                 </td>

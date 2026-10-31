@@ -94,8 +94,7 @@ export default function Index({ paymentMethods }: Props) {
                 preserveScroll: true,
                 onSuccess: () => {
                     cancelEdit();
-                    toast.success('Metode pembayaran berhasil diperbarui');
-                },
+                                    },
                 onError: (errs) => {
                     toast.error('Gagal memperbarui', {
                         description: Object.values(errs)[0] || 'Periksa kembali isian form Anda.'
@@ -109,8 +108,7 @@ export default function Index({ paymentMethods }: Props) {
                 preserveScroll: true,
                 onSuccess: () => {
                     resetForm();
-                    toast.success('Metode pembayaran berhasil ditambahkan');
-                },
+                                    },
                 onError: (errs) => {
                     toast.error('Gagal menambahkan', {
                         description: Object.values(errs)[0] || 'Periksa kembali isian form Anda.'
@@ -169,8 +167,7 @@ export default function Index({ paymentMethods }: Props) {
         router.patch(`/payment-methods/${method.id}/toggle`, {}, {
             preserveScroll: true,
             onSuccess: () => {
-                toast.success(`Status ${method.nama} diubah`);
-            }
+                            }
         });
     };
 
@@ -192,8 +189,7 @@ export default function Index({ paymentMethods }: Props) {
             preserveScroll: true,
             onSuccess: () => {
                 setDeleteModal({ show: false, id: null, nama: '' });
-                toast.success('Metode pembayaran berhasil dihapus');
-                if (editingId === deleteModal.id) cancelEdit();
+                                if (editingId === deleteModal.id) cancelEdit();
             },
             onError: (errs) => {
                 toast.error('Gagal menghapus', {
@@ -471,19 +467,7 @@ export default function Index({ paymentMethods }: Props) {
                                 )}
 
                                 {/* URUTAN & KETERANGAN */}
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div className="col-span-1 space-y-1">
-                                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                                            Urutan Tampil
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={data.urutan}
-                                            onChange={(e) => setData('urutan', parseInt(e.target.value) || 0)}
-                                            className="w-full h-10 px-3 rounded-xl bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[#f5b800] outline-none"
-                                            min="0"
-                                        />
-                                    </div>
+                                <div className="grid grid-cols-1 gap-1">
                                     <div className="col-span-2 space-y-1">
                                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
                                             Catatan / Instruksi (Opsional)

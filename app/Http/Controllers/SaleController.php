@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Sale;
+use App\Services\SaleService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -15,8 +16,13 @@ class SaleController extends Controller
         $to = $request->input('to', now()->toDateString());
         $search = $request->input('search', '');
 
+        // Normalisasi jika tanggal terbalik
+        if ($from > $to) {
+            [$from, $to] = [$to, $from];
+        }
+
         // Query Dasar
-        $query = Sale::with(['kasir:id,nama', 'paymentMethod:id,nama,tipe'])
+        $query = Sale::with(['kasir:id,nama', 'paymentMethod:id,nama,tipe', 'voidedBy:id,nama'])
             ->withCount('items')
             ->withExists(['items as has_grosir' => function ($q) {
                 $q->where('is_grosir', true);
@@ -36,8 +42,8 @@ class SaleController extends Controller
             });
         }
 
-        // Clone query untuk menghitung statistik sebelum dipaginasi
-        $statsQuery = clone $query;
+        // Statistik hanya menghitung transaksi aktif (bukan void)
+        $statsQuery = (clone $query)->where('status', '!=', 'void');
         $totalOmzet = $statsQuery->sum('total');
         $totalTransaksi = $statsQuery->count();
         $aov = $totalTransaksi > 0 ? $totalOmzet / $totalTransaksi : 0;
@@ -64,10 +70,30 @@ class SaleController extends Controller
 
     public function show(Sale $sale): Response
     {
-        $sale->load(['items', 'kasir:id,nama', 'paymentMethod']);
+        $sale->load(['items', 'kasir:id,nama', 'paymentMethod', 'voidedBy:id,nama']);
 
         return Inertia::render('Sales/Show', [
             'sale' => $sale,
         ]);
+    }
+
+    /**
+     * Membatalkan transaksi (Void) dan mengembalikan stok.
+     */
+    public function void(Request $request, Sale $sale, SaleService $saleService)
+    {
+        $validated = $request->validate([
+            'alasan' => 'required|string|max:255',
+        ]);
+
+        try {
+            $saleService->voidSale($sale, auth()->id(), $validated['alasan']);
+
+            return back()->with('success', "Transaksi #{$sale->no_transaksi} berhasil dibatalkan dan stok telah dikembalikan.");
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        } catch (\Exception $e) {
+            return back()->with('error', 'Terjadi kesalahan saat membatalkan transaksi.');
+        }
     }
 }

@@ -594,27 +594,13 @@ export default function Index({
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent width="w-44" align="end">
-                                    <DropdownMenuItem icon={Printer} onClick={() => window.print()}>
-                                        Cetak / PDF
-                                    </DropdownMenuItem>
                                     <DropdownMenuItem
                                         icon={FileSpreadsheet}
                                         onClick={() => {
-                                            const csvRows = [
-                                                ['Tanggal', 'Omzet', 'Transaksi', 'Laba'],
-                                                ...salesSummary.map(s => [s.date, s.total_omzet, s.total_transaksi, s.total_laba])
-                                            ];
-                                            const csvContent = 'data:text/csv;charset=utf-8,' + csvRows.map(e => e.join(',')).join('\n');
-                                            const encodedUri = encodeURI(csvContent);
-                                            const link = document.createElement('a');
-                                            link.setAttribute('href', encodedUri);
-                                            link.setAttribute('download', `laporan-penjualan-${startDate}-${endDate}.csv`);
-                                            document.body.appendChild(link);
-                                            link.click();
-                                            document.body.removeChild(link);
+                                            window.location.href = `/reports/export?from=${startDate}&to=${endDate}`;
                                         }}
                                     >
-                                        Unduh CSV
+                                        Unduh Laporan Lengkap (CSV)
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -657,9 +643,9 @@ export default function Index({
                             onClick={() => setActiveTab('grosir')}
                             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${activeTab === 'grosir' ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
                         >
-                            <Tags className="size-4 text-purple-600" /> Laporan Grosir
+                            <Tags className="size-4 text-[#f5b800]" /> Laporan Grosir
                             {grosirStats && grosirStats.total_transaksi > 0 && (
-                                <span className="ml-1.5 px-2 py-0.5 rounded-full text-[11px] bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 font-bold">
+                                <span className="ml-1.5 px-2 py-0.5 rounded-full text-[11px] bg-[#f5b800]/20 text-amber-800 dark:text-amber-300 font-bold">
                                     {grosirStats.total_transaksi}
                                 </span>
                             )}
@@ -895,7 +881,7 @@ export default function Index({
                                 <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
                                     Rp {formatRupiah(grosirStats?.total_omzet || 0)}
                                 </div>
-                                <span className="text-xs text-purple-600 dark:text-purple-400 mt-1 block font-medium">Penjualan Partai / Grosir</span>
+                                <span className="text-xs text-amber-600 dark:text-amber-400 mt-1 block font-medium">Penjualan Partai / Grosir</span>
                             </div>
 
                             <div className="p-5 rounded-xl bg-white dark:bg-[#232019] border border-gray-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
@@ -965,7 +951,7 @@ export default function Index({
                                                     <td className="py-3.5 px-4 text-right text-gray-500 line-through">
                                                         Rp {formatRupiah(Number(p.avg_harga_normal))}
                                                     </td>
-                                                    <td className="py-3.5 px-4 text-right font-bold text-purple-600 dark:text-purple-400">
+                                                    <td className="py-3.5 px-4 text-right font-bold text-amber-600 dark:text-amber-400">
                                                         Rp {formatRupiah(Number(p.avg_harga_grosir))}
                                                     </td>
                                                     <td className="py-3.5 px-4 text-right text-emerald-600 font-medium">

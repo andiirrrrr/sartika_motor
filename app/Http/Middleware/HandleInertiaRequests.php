@@ -2,6 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Product;
+use App\Models\Sale;
+use App\Models\Setting;
+use App\Models\Shift;
+use App\Models\ShiftCashMovement;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -17,23 +22,37 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
-        
+
         $activeShift = null;
         if ($user) {
-            $shift = \App\Models\Shift::where('user_id', $user->id)
+            $shift = Shift::where('user_id', $user->id)
                 ->where('status', 'buka')
                 ->first();
 
             if ($shift) {
-                // Hitung penjualan tunai secara real-time
-                $penjualanTunai = \App\Models\Sale::where('shift_id', $shift->id)
+                // Hitung penjualan tunai secara real-time (hanya transaksi aktif / bukan void)
+                $penjualanTunai = Sale::where('shift_id', $shift->id)
+                    ->where('status', '!=', 'void')
                     ->where('metode_bayar', 'tunai')
                     ->sum('total');
-                
+
+                // Hitung mutasi kas operasional shift
+                $kasMasuk = ShiftCashMovement::where('shift_id', $shift->id)
+                    ->where('tipe', 'masuk')
+                    ->sum('jumlah');
+
+                $kasKeluar = ShiftCashMovement::where('shift_id', $shift->id)
+                    ->where('tipe', 'keluar')
+                    ->sum('jumlah');
+
+                $shift->load(['cashMovements.createdBy:id,nama']);
+
                 // Tambahkan data acuan ke dalam object shift
                 $shift->penjualan_tunai_sementara = $penjualanTunai;
-                $shift->uang_seharusnya_sementara = $shift->modal_awal + $penjualanTunai;
-                
+                $shift->kas_masuk_sementara = $kasMasuk;
+                $shift->kas_keluar_sementara = $kasKeluar;
+                $shift->uang_seharusnya_sementara = $shift->modal_awal + $penjualanTunai + $kasMasuk - $kasKeluar;
+
                 $activeShift = $shift;
             }
         }
@@ -53,12 +72,13 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
             ],
             'app_settings' => [
-                'store_name' => \App\Models\Setting::get('store_name', 'Sartika Motor'),
-                'store_address' => \App\Models\Setting::get('store_address', 'Jl. Raya Motor No. 123'),
-                'store_phone' => \App\Models\Setting::get('store_phone', '0812-3456-7890'),
-                'receipt_footer' => \App\Models\Setting::get('receipt_footer', 'Terima kasih atas kunjungan Anda'),
+                'store_name' => Setting::get('store_name', 'Sartika Motor'),
+                'store_address' => Setting::get('store_address', 'Jl. Raya Motor No. 123'),
+                'store_phone' => Setting::get('store_phone', '0812-3456-7890'),
+                'receipt_footer' => Setting::get('receipt_footer', 'Terima kasih atas kunjungan Anda'),
+                'receipt_paper_size' => Setting::get('receipt_paper_size', '80mm'),
             ],
-            'low_stock_count' => fn () => \App\Models\Product::stokMenipis()->count(),
+            'low_stock_count' => fn () => Product::stokMenipis()->count(),
         ]);
     }
 }

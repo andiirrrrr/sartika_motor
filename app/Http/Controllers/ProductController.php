@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\ProductsExport;
 use App\Imports\ProductsImport;
+use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Product;
 use App\Services\StockService;
@@ -19,6 +20,7 @@ class ProductController extends Controller
     {
         $search = trim((string) $request->input('search', ''));
         $kategoriId = $request->input('kategori_id');
+        $status = $request->input('status'); // 'aktif', 'nonaktif', or null
         $perPage = (int) $request->input('per_page', 20);
         $perPage = in_array($perPage, [10, 20, 50, 100], true) ? $perPage : 20;
 
@@ -26,6 +28,8 @@ class ProductController extends Controller
             ->with('kategori:id,nama')
             ->when($search !== '', fn ($q) => $q->cari($search))
             ->when($kategoriId, fn ($q) => $q->where('kategori_id', $kategoriId))
+            ->when($status === 'aktif', fn ($q) => $q->where('aktif', true))
+            ->when($status === 'nonaktif', fn ($q) => $q->where('aktif', false))
             ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString()
@@ -42,10 +46,12 @@ class ProductController extends Controller
                 'min_qty_grosir' => $p->min_qty_grosir,
                 'stok' => $p->stok,
                 'stok_minimum' => $p->stok_minimum,
-                'aktif' => $p->aktif,
+                'aktif' => (bool) $p->aktif,
             ]);
 
         $totalSku = Product::count();
+        $totalAktif = Product::where('aktif', true)->count();
+        $totalNonaktif = Product::where('aktif', false)->count();
         $lowStock = Product::stokMenipis()->where('stok', '>', 0)->count();
         $outOfStock = Product::where('stok', '<=', 0)->count();
 
@@ -55,11 +61,14 @@ class ProductController extends Controller
             'filters' => [
                 'search' => $search,
                 'kategori_id' => $kategoriId,
+                'status' => $status,
                 'per_page' => $perPage,
             ],
             // Kirim data metrik ke frontend
             'stats' => [
                 'total_sku' => $totalSku,
+                'total_aktif' => $totalAktif,
+                'total_nonaktif' => $totalNonaktif,
                 'low_stock' => $lowStock,
                 'out_of_stock' => $outOfStock,
             ],
@@ -81,12 +90,18 @@ class ProductController extends Controller
             'kategori_id' => 'nullable|exists:categories,id',
             'satuan' => 'required|string|max:20',
             'harga_beli' => 'required|numeric|min:0',
-            'harga_jual' => 'required|numeric|min:0',
-            'harga_grosir' => 'nullable|numeric|min:0',
-            'min_qty_grosir' => 'nullable|numeric|min:0.01',
+            'harga_jual' => 'required|numeric|min:0|gt:harga_beli',
+            'harga_grosir' => 'nullable|numeric|min:0|lt:harga_jual|required_with:min_qty_grosir',
+            'min_qty_grosir' => 'nullable|numeric|min:2|required_with:harga_grosir',
             'stok_minimum' => 'required|numeric|min:0',
             'stok_awal' => 'nullable|numeric|min:0',
             'gambar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'harga_jual.gt' => 'Harga jual harus lebih tinggi dari harga beli (HPP).',
+            'harga_grosir.lt' => 'Harga grosir harus lebih murah dari harga jual normal.',
+            'harga_grosir.required_with' => 'Harga grosir wajib diisi jika minimal qty grosir diisi.',
+            'min_qty_grosir.required_with' => 'Minimal qty grosir wajib diisi jika harga grosir diisi.',
+            'min_qty_grosir.min' => 'Minimal pembelian grosir minimal 2 barang.',
         ]);
 
         DB::transaction(function () use ($validated, $request) {
@@ -98,12 +113,12 @@ class ProductController extends Controller
                 'kode_barang' => $validated['kode_barang'],
                 'nama' => $validated['nama'],
                 'gambar' => $gambarPath,
-                'kategori_id' => $validated['kategori_id'] ?: null,
+                'kategori_id' => ! empty($validated['kategori_id']) ? $validated['kategori_id'] : null,
                 'satuan' => $validated['satuan'],
                 'harga_beli' => (int) $validated['harga_beli'],
                 'harga_jual' => (int) $validated['harga_jual'],
-                'harga_grosir' => $validated['harga_grosir'] ? (int) $validated['harga_grosir'] : null,
-                'min_qty_grosir' => $validated['min_qty_grosir'] ?: null,
+                'harga_grosir' => ! empty($validated['harga_grosir']) ? (int) $validated['harga_grosir'] : null,
+                'min_qty_grosir' => ! empty($validated['min_qty_grosir']) ? (float) $validated['min_qty_grosir'] : null,
                 'stok_minimum' => $validated['stok_minimum'],
                 'aktif' => true,
             ]);
@@ -144,12 +159,18 @@ class ProductController extends Controller
             'kategori_id' => 'nullable|exists:categories,id',
             'satuan' => 'required|string|max:20',
             'harga_beli' => 'required|numeric|min:0',
-            'harga_jual' => 'required|numeric|min:0',
-            'harga_grosir' => 'nullable|numeric|min:0',
-            'min_qty_grosir' => 'nullable|numeric|min:0.01',
+            'harga_jual' => 'required|numeric|min:0|gt:harga_beli',
+            'harga_grosir' => 'nullable|numeric|min:0|lt:harga_jual|required_with:min_qty_grosir',
+            'min_qty_grosir' => 'nullable|numeric|min:2|required_with:harga_grosir',
             'stok_minimum' => 'required|numeric|min:0',
             'gambar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'aktif' => 'boolean',
+        ], [
+            'harga_jual.gt' => 'Harga jual harus lebih tinggi dari harga beli (HPP).',
+            'harga_grosir.lt' => 'Harga grosir harus lebih murah dari harga jual normal.',
+            'harga_grosir.required_with' => 'Harga grosir wajib diisi jika minimal qty grosir diisi.',
+            'min_qty_grosir.required_with' => 'Minimal qty grosir wajib diisi jika harga grosir diisi.',
+            'min_qty_grosir.min' => 'Minimal pembelian grosir minimal 2 barang.',
         ]);
 
         if ($request->hasFile('gambar')) {
@@ -158,13 +179,50 @@ class ProductController extends Controller
                 \Storage::disk('public')->delete($product->gambar);
             }
             $validated['gambar'] = $this->uploadAndConvertToWebp($request->file('gambar'));
+        } elseif ($request->boolean('hapus_gambar')) {
+            // User secara eksplisit menghapus gambar
+            if ($product->gambar && \Storage::disk('public')->exists($product->gambar)) {
+                \Storage::disk('public')->delete($product->gambar);
+            }
+            $validated['gambar'] = null;
+        } else {
+            // Jangan timpa gambar lama dengan null jika tidak ada perubahan gambar
+            unset($validated['gambar']);
         }
 
         // Konversi string kosong menjadi null agar database bersih
-        $validated['harga_grosir'] = $validated['harga_grosir'] ? (int) $validated['harga_grosir'] : null;
-        $validated['min_qty_grosir'] = $validated['min_qty_grosir'] ?: null;
+        $validated['harga_grosir'] = ! empty($validated['harga_grosir']) ? (int) $validated['harga_grosir'] : null;
+        $validated['min_qty_grosir'] = ! empty($validated['min_qty_grosir']) ? (float) $validated['min_qty_grosir'] : null;
+
+        // Cek perubahan harga untuk audit trail
+        $oldPrices = [
+            'harga_beli' => (int) $product->harga_beli,
+            'harga_jual' => (int) $product->harga_jual,
+            'harga_grosir' => $product->harga_grosir ? (int) $product->harga_grosir : null,
+        ];
+
+        $newPrices = [
+            'harga_beli' => (int) $validated['harga_beli'],
+            'harga_jual' => (int) $validated['harga_jual'],
+            'harga_grosir' => $validated['harga_grosir'],
+        ];
+
+        $priceChanged = ($oldPrices['harga_beli'] !== $newPrices['harga_beli']) ||
+                         ($oldPrices['harga_jual'] !== $newPrices['harga_jual']) ||
+                         ($oldPrices['harga_grosir'] !== $newPrices['harga_grosir']);
 
         $product->update($validated);
+
+        if ($priceChanged) {
+            ActivityLog::log(
+                tipe: 'ubah_harga_produk',
+                deskripsi: "Perubahan harga produk {$product->nama} ({$product->kode_barang})",
+                subjekTipe: 'Product',
+                subjekId: $product->id,
+                dataLama: $oldPrices,
+                dataBaru: $newPrices,
+            );
+        }
 
         return redirect()->route('products.index')->with('success', 'Produk berhasil diperbarui.');
     }
@@ -227,11 +285,18 @@ class ProductController extends Controller
                 ->orderByDesc('id');
         }
 
-        $products = $query->limit(50)
-            ->get([
-                'id', 'kode_barang', 'nama', 'gambar', 'stok', 'satuan',
-                'harga_beli', 'harga_jual', 'harga_grosir', 'min_qty_grosir',
-            ]);
+        $columns = [
+            'id', 'kode_barang', 'nama', 'gambar', 'stok', 'satuan',
+            'harga_jual', 'harga_grosir', 'min_qty_grosir',
+        ];
+
+        // Saring harga_beli: Hanya kirim ke role Admin (untuk form Stock In/Out)
+        // Jangan pernah kirim rahasia harga_beli ke role Kasir
+        if (auth()->user()?->role === 'admin') {
+            $columns[] = 'harga_beli';
+        }
+
+        $products = $query->limit(50)->get($columns);
 
         return response()->json($products);
     }
@@ -293,6 +358,19 @@ class ProductController extends Controller
             }
 
             // Jika tidak ada riwayat, hapus permanen
+            ActivityLog::log(
+                tipe: 'hapus_produk',
+                deskripsi: "Penghapusan produk: {$product->nama} ({$product->kode_barang})",
+                subjekTipe: 'Product',
+                subjekId: $product->id,
+                dataLama: [
+                    'kode_barang' => $product->kode_barang,
+                    'nama' => $product->nama,
+                    'harga_beli' => $product->harga_beli,
+                    'harga_jual' => $product->harga_jual,
+                ],
+            );
+
             $product->delete();
 
             return back()->with('success', 'Produk berhasil dihapus permanen.');

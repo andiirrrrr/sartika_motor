@@ -17,10 +17,9 @@
         "isolatedModules": true,
         "noEmit": true,
         "allowJs": true,
-        "baseUrl": ".",
         "paths": {
             "@/*": [
-                "resources/js/*"
+                "./resources/js/*"
             ]
         },
         "types": [

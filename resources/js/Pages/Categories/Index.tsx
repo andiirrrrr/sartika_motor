@@ -45,16 +45,14 @@ export default function Index({ categories }: Props) {
             put(`/categories/${editingId}`, {
                 onSuccess: () => {
                     cancelEdit();
-                    toast.success('Kategori berhasil diperbarui');
-                },
+                                    },
                 preserveScroll: true,
             });
         } else {
             post('/categories', {
                 onSuccess: () => {
                     reset('nama');
-                    toast.success('Kategori berhasil ditambahkan');
-                },
+                                    },
                 preserveScroll: true,
             });
         }
@@ -92,8 +90,7 @@ export default function Index({ categories }: Props) {
         router.delete(`/categories/${deleteModal.id}`, {
             onSuccess: () => {
                 setDeleteModal({ show: false, id: null, nama: '' });
-                toast.success('Kategori berhasil dihapus');
-                if (editingId === deleteModal.id) cancelEdit();
+                                if (editingId === deleteModal.id) cancelEdit();
             },
             onFinish: () => setIsDeleting(false),
             preserveScroll: true,

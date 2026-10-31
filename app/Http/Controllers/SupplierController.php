@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -49,6 +50,20 @@ class SupplierController extends Controller
             return back()->with('error', 'Gagal menghapus. Supplier ini sudah memiliki riwayat stok masuk.');
         }
 
+        ActivityLog::log(
+            tipe: 'hapus_supplier',
+            deskripsi: "Penghapusan supplier: {$supplier->nama}",
+            subjekTipe: 'Supplier',
+            subjekId: $supplier->id,
+        );
+
+        ActivityLog::log(
+            tipe: 'hapus_supplier',
+            deskripsi: "Penghapusan supplier: {$supplier->nama}",
+            subjekTipe: 'Supplier',
+            subjekId: $supplier->id,
+        );
+
         $supplier->delete();
 
         return back()->with('success', 'Supplier berhasil dihapus.');
@@ -76,6 +91,20 @@ class SupplierController extends Controller
 
                 continue;
             }
+
+            ActivityLog::log(
+                tipe: 'hapus_supplier',
+                deskripsi: "Penghapusan supplier: {$supplier->nama}",
+                subjekTipe: 'Supplier',
+                subjekId: $supplier->id,
+            );
+
+            ActivityLog::log(
+                tipe: 'hapus_supplier',
+                deskripsi: "Penghapusan supplier: {$supplier->nama}",
+                subjekTipe: 'Supplier',
+                subjekId: $supplier->id,
+            );
 
             $supplier->delete();
             $deletedCount++;

@@ -63,6 +63,47 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
     const [denoms, setDenoms] = useState({ d100k: 0, d50k: 0, d20k: 0, d10k: 0, d5k: 0, d2k: 0, d1k: 0 });
     const [isClosingShift, setIsClosingShift] = useState(false);
 
+    // State Mutasi Kas Toko / Kas Operasional (Petty Cash)
+    const [showPettyCash, setShowPettyCash] = useState(false);
+    const [pettyCashType, setPettyCashType] = useState<'keluar' | 'masuk'>('keluar');
+    const [pettyCashAmount, setPettyCashAmount] = useState('');
+    const [pettyCashReason, setPettyCashReason] = useState('');
+    const [isSubmittingPettyCash, setIsSubmittingPettyCash] = useState(false);
+
+    const handleSubmitPettyCash = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!activeShift) return;
+        const rawAmount = Number(pettyCashAmount.replace(/\D/g, ''));
+        if (!rawAmount || rawAmount <= 0) {
+            toast.error('Masukkan nominal kas yang valid!');
+            return;
+        }
+        if (!pettyCashReason.trim()) {
+            toast.error('Alasan / keperluan kas wajib diisi!');
+            return;
+        }
+
+        setIsSubmittingPettyCash(true);
+        router.post(`/shifts/${activeShift.id}/cash-movement`, {
+            tipe: pettyCashType,
+            jumlah: rawAmount,
+            alasan: pettyCashReason.trim(),
+        }, {
+            onSuccess: () => {
+                setShowPettyCash(false);
+                setPettyCashAmount('');
+                setPettyCashReason('');
+                toast.success(`Kas ${pettyCashType === 'masuk' ? 'Masuk' : 'Keluar'} berhasil dicatat.`);
+            },
+            onError: (err) => {
+                toast.error(Object.values(err)[0] as string || 'Gagal mencatat mutasi kas.');
+            },
+            onFinish: () => {
+                setIsSubmittingPettyCash(false);
+            }
+        });
+    };
+
     const handleModalAwalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let raw = e.target.value.replace(/\D/g, '');
         if (!raw) {
@@ -176,7 +217,12 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
     // Kalkulasi Kembalian & Selisih Shift
     const numericBayar = Number(bayar.replace(/\D/g, ''));
     const kembalian = Math.max(0, numericBayar - total);
-    const expectedCash = activeShift ? (Number(activeShift.modal_awal) + Number(activeShift.penjualan_tunai_sementara || 0)) : 0;
+    const expectedCash = activeShift
+        ? (Number(activeShift.modal_awal) +
+           Number(activeShift.penjualan_tunai_sementara || 0) +
+           Number(activeShift.kas_masuk_sementara || 0) -
+           Number(activeShift.kas_keluar_sementara || 0))
+        : 0;
     const selisih = (Number(uangFisik.replace(/\D/g, '')) || 0) - expectedCash;
 
     useEffect(() => {
@@ -233,6 +279,8 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
     };
 
     const handleCheckout = async () => {
+        if (isSubmitting) return;
+
         if (metodeBayar === 'tunai' && numericBayar < total) {
             toast.error('Jumlah bayar kurang dari total!');
             return;
@@ -242,6 +290,10 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
             toast.error('Harap isi nomor WhatsApp pelanggan atau hilangkan centang Kirim E-Struk.');
             return;
         }
+
+        const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : (`pos-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`);
 
         setIsSubmitting(true);
         try {
@@ -258,6 +310,7 @@ export default function Index({ categories, paymentMethods = [] }: Props) {
                     bayar: metodeBayar === 'tunai' ? numericBayar : total,
                     nama_pelanggan: sendWA && namaPelanggan.trim() ? namaPelanggan.trim() : null,
                     no_wa: sendWA && noWa.trim() ? noWa.trim() : null,
+                    idempotency_key: idempotencyKey,
                 })
             });
 
@@ -756,13 +809,23 @@ _${app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kam
                             <Wallet className="size-6" /> Lanjut ke Pembayaran
                         </Button>
 
-                        <Button
-                            variant="outline"
-                            onClick={() => setShowCloseShift(true)}
-                            className="w-full h-10 rounded-xl border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20 font-medium"
-                        >
-                            <Clock className="size-4 mr-2" /> Tutup Shift Saat Ini
-                        </Button>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowPettyCash(true)}
+                                className="h-10 rounded-xl border-amber-200 text-amber-800 hover:bg-amber-50 dark:border-amber-900/40 dark:text-amber-400 dark:hover:bg-amber-900/20 font-medium text-xs flex items-center justify-center gap-1.5"
+                            >
+                                <Wallet className="size-3.5 text-amber-600" /> Kas Toko
+                            </Button>
+
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowCloseShift(true)}
+                                className="h-10 rounded-xl border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20 font-medium text-xs flex items-center justify-center gap-1.5"
+                            >
+                                <Clock className="size-3.5" /> Tutup Shift
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1216,21 +1279,61 @@ _${app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kam
 
                         <div className="px-6 py-4 overflow-y-auto space-y-4">
                             {/* Info Cards */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <div className="p-4 rounded-xl bg-gray-50 dark:bg-zinc-900 flex flex-col justify-between">
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
+                                <div className="p-3 rounded-xl bg-gray-50 dark:bg-zinc-900 flex flex-col justify-between">
                                     <span className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Modal Awal</span>
-                                    <span className="text-lg font-bold text-gray-900 dark:text-white">Rp {formatRupiah(activeShift.modal_awal)}</span>
+                                    <span className="text-base font-bold text-gray-900 dark:text-white">Rp {formatRupiah(activeShift.modal_awal)}</span>
                                 </div>
-                                <div className="p-4 rounded-xl bg-gray-50 dark:bg-zinc-900 flex flex-col justify-between">
+                                <div className="p-3 rounded-xl bg-gray-50 dark:bg-zinc-900 flex flex-col justify-between">
                                     <span className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Penjualan Tunai</span>
-                                    <span className="text-lg font-bold text-gray-900 dark:text-white">Rp {formatRupiah(activeShift.penjualan_tunai_sementara || 0)}</span>
+                                    <span className="text-base font-bold text-gray-900 dark:text-white">Rp {formatRupiah(activeShift.penjualan_tunai_sementara || 0)}</span>
                                 </div>
-                                <div className="p-4 rounded-xl bg-[#f5b800]/10 dark:bg-[#f5b800]/20 flex flex-col justify-between relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-16 h-16 bg-[#f5b800]/20 rounded-full -mr-6 -mt-6"></div>
+                                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex flex-col justify-between">
+                                    <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold uppercase tracking-wider mb-1">Kas Masuk (+)</span>
+                                    <span className="text-base font-bold text-emerald-700 dark:text-emerald-400">Rp {formatRupiah(activeShift.kas_masuk_sementara || 0)}</span>
+                                </div>
+                                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 flex flex-col justify-between">
+                                    <span className="text-[10px] text-red-700 dark:text-red-400 font-semibold uppercase tracking-wider mb-1">Kas Keluar (-)</span>
+                                    <span className="text-base font-bold text-red-700 dark:text-red-400">Rp {formatRupiah(activeShift.kas_keluar_sementara || 0)}</span>
+                                </div>
+                                <div className="col-span-2 md:col-span-1 p-3 rounded-xl bg-[#f5b800]/10 dark:bg-[#f5b800]/20 flex flex-col justify-between relative overflow-hidden border border-[#f5b800]/30">
                                     <span className="text-[10px] font-bold text-[#f5b800] uppercase tracking-wider mb-1 relative z-10">Uang Seharusnya</span>
-                                    <span className="text-lg font-bold text-[#f5b800] relative z-10">Rp {formatRupiah(expectedCash)}</span>
+                                    <span className="text-base font-bold text-[#f5b800] relative z-10">Rp {formatRupiah(expectedCash)}</span>
                                 </div>
                             </div>
+
+                            {/* Rincian Catatan Kas Toko (Jika Ada) */}
+                            {((activeShift.cash_movements || activeShift.cashMovements || []).length > 0) && (
+                                <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 space-y-2">
+                                    <div className="flex items-center justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
+                                        <span className="flex items-center gap-1.5">
+                                            <Wallet className="size-3.5 text-amber-500" /> Rincian Kas Masuk / Keluar Toko
+                                        </span>
+                                        <span className="text-gray-400 font-normal">{(activeShift.cash_movements || activeShift.cashMovements || []).length} mutasi</span>
+                                    </div>
+                                    <div className="divide-y divide-gray-100 dark:divide-zinc-800 text-xs">
+                                        {(activeShift.cash_movements || activeShift.cashMovements || []).map((m: any, idx: number) => (
+                                            <div key={m.id || idx} className="py-2 flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <span className={cn(
+                                                        "px-1.5 py-0.5 rounded font-bold text-[9px] uppercase shrink-0",
+                                                        m.tipe === 'masuk' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200" : "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400 border border-red-200"
+                                                    )}>
+                                                        {m.tipe === 'masuk' ? '+Masuk' : '-Keluar'}
+                                                    </span>
+                                                    <span className="text-gray-700 dark:text-gray-300 font-medium truncate">{m.alasan}</span>
+                                                </div>
+                                                <span className={cn(
+                                                    "font-bold shrink-0",
+                                                    m.tipe === 'masuk' ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+                                                )}>
+                                                    {m.tipe === 'masuk' ? '+' : '-'}Rp {formatRupiah(m.jumlah)}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Input Uang Fisik */}
                             <div className="bg-gray-50 dark:bg-zinc-900 p-4 rounded-xl space-y-3">
@@ -1324,6 +1427,121 @@ _${app_settings?.receipt_footer || 'Terima kasih atas kunjungan Anda di Toko Kam
                                 <Lock className="size-4 mr-2" /> {isClosingShift ? 'Memproses...' : 'Konfirmasi & Tutup'}
                             </Button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ================= MODAL KAS TOKO / PETTY CASH ================= */}
+            {showPettyCash && activeShift && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-sm animate-in fade-in">
+                    <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-zinc-800">
+                        <div className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 flex items-center justify-center">
+                                    <Wallet className="size-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-900 dark:text-white text-base">Kas Masuk / Keluar Toko</h3>
+                                    <p className="text-xs text-gray-500">Shift #{activeShift.id} • Kasir: {user?.nama}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowPettyCash(false)} className="text-gray-400 hover:text-gray-600">
+                                <X className="size-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmitPettyCash} className="p-6 space-y-4">
+                            {/* Pilihan Tipe: Kas Keluar vs Kas Masuk */}
+                            <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-zinc-800 rounded-xl">
+                                <button
+                                    type="button"
+                                    onClick={() => setPettyCashType('keluar')}
+                                    className={cn(
+                                        "py-2 text-xs font-bold rounded-lg transition-all",
+                                        pettyCashType === 'keluar'
+                                            ? "bg-red-500 text-white shadow-sm"
+                                            : "text-gray-600 dark:text-gray-400 hover:text-gray-900"
+                                    )}
+                                >
+                                    Kas Keluar (Operasional)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPettyCashType('masuk')}
+                                    className={cn(
+                                        "py-2 text-xs font-bold rounded-lg transition-all",
+                                        pettyCashType === 'masuk'
+                                            ? "bg-emerald-600 text-white shadow-sm"
+                                            : "text-gray-600 dark:text-gray-400 hover:text-gray-900"
+                                    )}
+                                >
+                                    Kas Masuk (Tambahan)
+                                </button>
+                            </div>
+
+                            <div className="p-3 rounded-xl bg-gray-50 dark:bg-zinc-800/50 border border-gray-100 dark:border-zinc-800 text-xs text-gray-600 dark:text-gray-400">
+                                {pettyCashType === 'keluar'
+                                    ? "Gunakan untuk pengeluaran laci kasir (beli bensin, konsumsi bengkel, air galon, parkir/sampah). Pengeluaran ini otomatis memotong uang yang harus disetorkan saat tutup shift."
+                                    : "Gunakan jika pemilik toko menyuntikkan uang kas tambahan ke laci kasir di tengah-tengah shift."
+                                }
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                    Jumlah Nominal (Rp) <span className="text-red-500">*</span>
+                                </label>
+                                <div className="relative flex items-center">
+                                    <span className="absolute left-4 text-gray-500 font-bold">Rp</span>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={pettyCashAmount}
+                                        onChange={(e) => {
+                                            const raw = e.target.value.replace(/\D/g, '');
+                                            setPettyCashAmount(raw ? new Intl.NumberFormat('id-ID').format(Number(raw)) : '');
+                                        }}
+                                        placeholder="0"
+                                        required
+                                        className="w-full h-11 pl-12 pr-4 text-base font-bold rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 outline-none focus:ring-2 focus:ring-[#f5b800]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                    Alasan / Keperluan <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={pettyCashReason}
+                                    onChange={(e) => setPettyCashReason(e.target.value)}
+                                    placeholder={pettyCashType === 'keluar' ? 'Contoh: Beli bensin tambal ban, galon air' : 'Contoh: Tambahan modal uang kecil dari owner'}
+                                    required
+                                    className="w-full h-11 px-4 text-sm rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 outline-none focus:ring-2 focus:ring-[#f5b800]"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 pt-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setShowPettyCash(false)}
+                                    className="rounded-xl"
+                                >
+                                    Batal
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={isSubmittingPettyCash || !pettyCashAmount.trim() || !pettyCashReason.trim()}
+                                    className={cn(
+                                        "rounded-xl text-white font-bold",
+                                        pettyCashType === 'keluar' ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"
+                                    )}
+                                >
+                                    {isSubmittingPettyCash ? 'Menyimpan...' : `Catat Kas ${pettyCashType === 'masuk' ? 'Masuk' : 'Keluar'}`}
+                                </Button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

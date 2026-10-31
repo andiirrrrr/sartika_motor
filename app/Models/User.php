@@ -65,4 +65,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(StockOut::class, 'created_by');
     }
+
+    public function shifts(): HasMany
+    {
+        return $this->hasMany(Shift::class);
+    }
 }

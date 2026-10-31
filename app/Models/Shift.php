@@ -10,8 +10,8 @@ class Shift extends Model
 {
     protected $fillable = [
         'user_id', 'waktu_buka', 'waktu_tutup', 'modal_awal',
-        'total_penjualan_tunai', 'uang_seharusnya', 'uang_fisik',
-        'selisih', 'status'
+        'total_penjualan_tunai', 'total_kas_masuk', 'total_kas_keluar',
+        'uang_seharusnya', 'uang_fisik', 'selisih', 'status',
     ];
 
     protected function casts(): array
@@ -27,9 +27,13 @@ class Shift extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    // TAMBAHKAN RELASI INI
     public function sales(): HasMany
     {
         return $this->hasMany(Sale::class);
+    }
+
+    public function cashMovements(): HasMany
+    {
+        return $this->hasMany(ShiftCashMovement::class);
     }
 }

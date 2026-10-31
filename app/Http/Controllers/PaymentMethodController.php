@@ -151,7 +151,7 @@ class PaymentMethodController extends Controller
         $image = @imagecreatefromstring($imageContent);
 
         if (! $image) {
-            return $file->store('payment_methods', 'public');
+            throw new \Exception('Format gambar QRIS tidak didukung atau berkas rusak.');
         }
 
         $storagePath = storage_path('app/public/'.$path);

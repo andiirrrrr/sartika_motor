@@ -40,17 +40,17 @@ class StockService
             ]);
 
             // --- LOGIKA AVERAGE COST (HPP RATA-RATA) ---
-            if ($hargaBeliBaru > 0) {
+            if (isset($data['harga_beli']) && is_numeric($data['harga_beli'])) {
                 $stokLama = (float) $product->stok;
                 $hargaRataLama = (float) $product->harga_beli;
-                
-                // Hitung total nilai aset lama dan baru
-                $totalNilaiLama = $stokLama * $hargaRataLama;
+
+                // Hitung total nilai aset lama dan baru (stok lama negatif di-clamp ke 0)
+                $totalNilaiLama = max(0, $stokLama) * $hargaRataLama;
                 $totalNilaiBaru = $qty * $hargaBeliBaru;
-                
-                $totalStokBaru = $stokLama + $qty;
-                
-                // Hitung harga rata-rata baru
+
+                $totalStokBaru = max(0, $stokLama) + $qty;
+
+                // Hitung harga rata-rata baru (termasuk jika harga beli baru = 0 untuk promo/bonus)
                 if ($totalStokBaru > 0) {
                     $hargaRataBaru = ($totalNilaiLama + $totalNilaiBaru) / $totalStokBaru;
                     $product->harga_beli = (int) round($hargaRataBaru);
@@ -63,7 +63,7 @@ class StockService
                 product: $product,
                 tipe: 'masuk',
                 qty: $qty,
-                hargaBeli: $hargaBeliBaru > 0 ? $hargaBeliBaru : null,
+                hargaBeli: $hargaBeliBaru,
                 alasan: null,
                 catatan: $data['catatan'] ?? null,
                 referensiTipe: 'stock_in',
@@ -104,6 +104,7 @@ class StockService
             $stockOut = StockOut::create([
                 'product_id' => $product->id,
                 'qty' => $qty,
+                'harga_beli' => (int) $product->harga_beli,
                 'alasan' => $data['alasan'],
                 'catatan' => $data['catatan'] ?? null,
                 'tanggal' => $data['tanggal'],
@@ -114,7 +115,7 @@ class StockService
                 product: $product,
                 tipe: 'keluar',
                 qty: -$qty,
-                hargaBeli: null,
+                hargaBeli: (int) $product->harga_beli,
                 alasan: $data['alasan'],
                 catatan: $data['catatan'] ?? null,
                 referensiTipe: 'stock_out',
@@ -159,6 +160,32 @@ class StockService
             alasan: null,
             catatan: null,
             referensiTipe: 'sale',
+            referensiId: $saleId,
+            tanggal: $tanggal ?? now()->toDateString(),
+            userId: $userId,
+        );
+    }
+
+    /**
+     * Kembalikan pergerakan stok dari pembatalan (void) penjualan POS.
+     */
+    public function recordVoidMovement(
+        Product $lockedProduct,
+        float $qty,
+        int $saleId,
+        int $userId,
+        ?string $tanggal = null,
+    ): void {
+        $qty = abs($qty);
+
+        $this->recordMovement(
+            product: $lockedProduct,
+            tipe: 'koreksi',
+            qty: $qty, // Positif untuk mengembalikan stok
+            hargaBeli: (int) $lockedProduct->harga_beli,
+            alasan: 'Void Transaksi #'.$saleId,
+            catatan: 'Pengembalian stok dari pembatalan transaksi POS',
+            referensiTipe: 'sale_void',
             referensiId: $saleId,
             tanggal: $tanggal ?? now()->toDateString(),
             userId: $userId,

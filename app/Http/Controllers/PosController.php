@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\StokTidakCukupException;
 use App\Models\Category;
 use App\Models\PaymentMethod;
 use App\Models\Shift;
@@ -44,13 +45,22 @@ class PosController extends Controller
             'bayar' => 'nullable|numeric|min:0',
             'nama_pelanggan' => 'nullable|string|max:100',
             'no_wa' => 'nullable|string|max:25',
+            'idempotency_key' => 'nullable|string|max:64',
         ]);
 
         if (! empty($validated['payment_method_id'])) {
-            $pm = PaymentMethod::find($validated['payment_method_id']);
-            if ($pm) {
-                $validated['metode_bayar'] = $pm->tipe;
+            $pm = PaymentMethod::where('id', $validated['payment_method_id'])
+                ->where('aktif', true)
+                ->first();
+
+            if (! $pm) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Metode pembayaran tidak valid atau sudah dinonaktifkan.',
+                ], 422);
             }
+
+            $validated['metode_bayar'] = $pm->tipe;
         }
 
         // Sisipkan shift_id ke dalam data
@@ -63,6 +73,11 @@ class PosController extends Controller
                 'success' => true,
                 'sale' => $sale,
             ]);
+        } catch (StokTidakCukupException|\App\Exceptions\CheckoutException|\InvalidArgumentException|\DomainException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
